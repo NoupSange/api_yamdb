@@ -1,9 +1,9 @@
 from rest_framework import permissions
 
 
-class IsAdminOrReadOnly(permissions.BasePermission):
+class IsAdminSuperUserOrReadOnly(permissions.BasePermission):
     """
-    Разрешает редактирование и удаление контента администратору.
+    Разрешает редактирование и удаление контента администратору и суперюзеру.
     Чтение доступно всем.
     """
 
@@ -17,4 +17,12 @@ class IsAdminOrReadOnly(permissions.BasePermission):
         return (
             request.method in permissions.SAFE_METHODS
             or request.user.is_admin
+            or request.user.is_superuser
         )
+
+
+class IsMethodPutAllowed(permissions.BasePermission):
+    """Запрещает метод PUT."""
+
+    def has_permission(self, request, view):
+        return request.method != 'PUT'
