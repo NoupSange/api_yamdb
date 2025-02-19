@@ -27,28 +27,27 @@ class Genre(CategoryGenreMixin):
 class Title(models.Model):
     name = models.CharField(
         max_length=TEXT_LENGTH,
-        verbose_name='Название произведения'
+        verbose_name='Название'
     )
     year = models.PositiveIntegerField(
         validators=[MaxValueValidator(datetime.date.today().year)],
-        verbose_name='Год выпуска произведения'
+        verbose_name='Год выпуска'
     )
     description = models.TextField(
         max_length=TEXT_LENGTH,
         null=True,
         blank=True,
-        verbose_name='Описание произведения'
+        verbose_name='Описание'
     )
     genre = models.ManyToManyField(
         Genre,
-        through='GenreTitle',
-        verbose_name='Жанры произведения',
+        verbose_name='Жанры',
     )
     category = models.ForeignKey(
         Category,
         on_delete=models.SET_NULL,
         null=True,
-        verbose_name='Категория произведения',
+        verbose_name='Категория',
     )
 
     class Meta:
@@ -58,26 +57,3 @@ class Title(models.Model):
 
     def __str__(self):
         return f'{self.name}, {self.year}'
-
-
-class GenreTitle(models.Model):
-    genre = models.ForeignKey(
-        Genre,
-        on_delete=models.CASCADE,
-        verbose_name='Жанр произведения',
-    )
-    title = models.ForeignKey(
-        Title,
-        on_delete=models.CASCADE,
-        verbose_name='Произведение',
-    )
-
-    class Meta:
-        constraints = (
-            models.UniqueConstraint(
-                fields=['genre', 'title'], name='unique_genre_title'
-            ),
-        )
-
-    def __str__(self):
-        return f'{self.genre} {self.title}'

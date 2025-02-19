@@ -20,9 +20,5 @@ class CategoryGenreMixin(models.Model):
         return self.name
 
 
-class AdminMixin(admin.ModelAdmin):
-    empty_value_display = '-пусто-'
-
-
-class CategoryGenreAdminMixin(AdminMixin):
+class CategoryGenreAdminMixin(admin.ModelAdmin):
     list_display = ('name', 'slug',)

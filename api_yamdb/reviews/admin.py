@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .mixins import AdminMixin, CategoryGenreAdminMixin
+from .mixins import CategoryGenreAdminMixin
 from .models import Category, Comment, Genre, Review, Title
 
 
@@ -15,21 +15,27 @@ class GenreAdmin(CategoryGenreAdminMixin):
 
 
 @admin.register(Title)
-class TitleAdmin(AdminMixin):
-    list_display = ('pk', 'name', 'year', 'category',)
+class TitleAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name', 'year', 'category')
+    list_editable = ('year', 'category',)
+    list_display_links = ('name',)
     search_fields = ('name', 'year',)
-    list_filter = ('genre', 'category',)
+    list_filter = ('category',)
+    filter_horizontal = ('genre',)
 
 
 @admin.register(Review)
-class ReviewAdmin(AdminMixin):
-    list_display = ('pk', 'author', 'title', 'pub_date', 'score',)
+class ReviewAdmin(admin.ModelAdmin):
+    list_display = ('id', 'author', 'title', 'pub_date', 'score',)
     search_fields = ('author', 'title', 'text',)
     list_filter = ('pub_date', 'score',)
 
 
 @admin.register(Comment)
-class CommentAdmin(AdminMixin):
-    list_display = ('pub_date', 'author', 'review', 'text',)
+class CommentAdmin(admin.ModelAdmin):
+    list_display = ('id', 'pub_date', 'author', 'review', 'text',)
     search_fields = ('author', 'text',)
     list_filter = ('pub_date',)
+
+
+admin.site.empty_value_display = '-пусто-'
