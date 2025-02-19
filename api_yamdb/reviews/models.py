@@ -30,7 +30,7 @@ class Review(models.Model):
     )
 
     class Meta:
-        default_related_name = 'review'
+        default_related_name = 'reviews'
         verbose_name = 'Отзыв'
         verbose_name_plural = 'Отзывы'
         ordering = ('pub_date',)
