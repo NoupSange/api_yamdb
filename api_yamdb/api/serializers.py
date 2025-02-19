@@ -1,7 +1,6 @@
 from rest_framework import serializers
 from django.core.exceptions import ValidationError
-from reviews.models import Review, Comment, Title
-from users.models import User  # Замените 'users' на имя вашего приложения
+from reviews.models import Review, Comment, User
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -14,7 +13,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 class ReviewSerializer(serializers.ModelSerializer):
     """Сериализатор для отзывов."""
-    
+
     author = serializers.SlugRelatedField(
         read_only=True, slug_field="username"
     )
@@ -36,7 +35,9 @@ class ReviewSerializer(serializers.ModelSerializer):
             user = request.user
             title_id = self.context["view"].kwargs.get("title_id")
             if Review.objects.filter(author=user, title_id=title_id).exists():
-                raise ValidationError("Вы уже оставляли отзыв на это произведение.")
+                raise ValidationError(
+                    "Вы уже оставляли отзыв на это произведение."
+                )
         return data
 
     class Meta:
@@ -46,7 +47,7 @@ class ReviewSerializer(serializers.ModelSerializer):
 
 class CommentSerializer(serializers.ModelSerializer):
     """Сериализатор для комментариев."""
-    
+
     author = serializers.SlugRelatedField(
         read_only=True, slug_field="username"
     )

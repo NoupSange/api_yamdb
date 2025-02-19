@@ -33,13 +33,13 @@ class Review(models.Model):
         default_related_name = 'review'
         verbose_name = 'Отзыв'
         verbose_name_plural = 'Отзывы'
-        ordering = ('created',)
+        ordering = ('pub_date',)
 
     def __str__(self):
         return f'Отзыв от {self.author.username} на {self.title.name}'
 
 
-class Comments(models.Model):
+class Comment(models.Model):
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -64,7 +64,7 @@ class Comments(models.Model):
         default_related_name = 'comments'
         verbose_name = 'Комментарий'
         verbose_name_plural = 'Комментарии'
-        ordering = ('created',)
+        ordering = ('pub_date',)
 
     def __str__(self):
         return (
