@@ -41,11 +41,24 @@ class TitleSerializer(serializers.ModelSerializer):
     )
     genre_detail = GenreSerializer(source='genre', read_only=True, many=True)
     category_detail = CategorySerializer(source='category', read_only=True)
+    rating = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Title
         fields = ('id', 'name', 'year', 'description', 'category',
-                  'genre', 'category_detail', 'genre_detail')
+                  'genre', 'category_detail', 'genre_detail', 'rating')
+
+    def get_rating(self, obj):
+        reviews = obj.reviews.all()
+
+        count = len(reviews)
+        if count == 0:
+            return None
+
+        total_score = 0
+        for review in reviews:
+            total_score += review.score
+        return total_score / count
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)

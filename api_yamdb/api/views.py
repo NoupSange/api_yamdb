@@ -75,7 +75,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
         """
         title = get_object_or_404(Title, id=self.kwargs.get("title_id"))
         if Review.objects.filter(
-                author=self.request.user, title=title
+            author=self.request.user, title=title
         ).exists():
             raise PermissionDenied(
                 "Вы уже оставляли отзыв на это произведение."
