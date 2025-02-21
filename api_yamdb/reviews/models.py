@@ -1,4 +1,6 @@
 import datetime
+from django.conf import settings
+
 
 from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator, MaxValueValidator
@@ -7,8 +9,13 @@ from django.db import models
 from .constants import TEXT_LENGTH
 from .mixins import CategoryGenreMixin
 
-User = get_user_model()
+from django.contrib.auth.models import AbstractUser
 
+
+class User(AbstractUser):
+    email = models.EmailField(unique=True)
+    role = models.CharField(max_length=50)
+    bio = models.TextField(blank=True, null=True)
 
 class Category(CategoryGenreMixin):
 
@@ -61,7 +68,7 @@ class Title(models.Model):
 
 class Review(models.Model):
     author = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         verbose_name='Автор',
     )
@@ -93,7 +100,7 @@ class Review(models.Model):
 
 class Comment(models.Model):
     author = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         verbose_name='Автор',
     )
