@@ -1,6 +1,39 @@
-from rest_framework import serializers
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from reviews.models import Review, Comment, User
+from django.shortcuts import get_object_or_404
+from rest_framework import serializers
+from reviews.models import Comment, Review
+from reviews.constants import CONFIRMATION_CODE_LENGTH, USERNAME_LENGTH
+User = get_user_model()
+
+
+class SignUpSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    username = serializers.CharField(max_length=USERNAME_LENGTH)
+
+    def validate_username(self, value):
+        if value == 'me':
+            raise ValidationError('Username "me" is not allowed.')
+        return value
+
+
+class TokenSerializer(serializers.Serializer):
+    username = serializers.CharField(max_length=USERNAME_LENGTH)
+    confirmation_code = serializers.CharField(
+        max_length=CONFIRMATION_CODE_LENGTH
+    )
+
+    def validate(self, data):
+        username = data.get('username')
+        confirmation_code = data.get('confirmation_code')
+
+        user = get_object_or_404(User, username=username)
+
+        if user.confirmation_code != confirmation_code:
+            raise ValidationError({
+                'confirmation_code': 'Invalid confirmation code.'})
+
+        return data
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -8,7 +41,9 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("id", "username", "email", "role")
+        fields = (
+            "id", "username", "email", "first_name", "last_name", "bio", "role"
+        )
 
 
 class ReviewSerializer(serializers.ModelSerializer):
