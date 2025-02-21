@@ -3,19 +3,36 @@ from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
 from django.utils.crypto import get_random_string
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, status, viewsets
+from rest_framework import viewsets
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
-from reviews.models import Review, Title
-
-from .permissions import (AuthorModeratorAdminOrReadOnly,
-                          IsAuthenticatedOrReadOnly)
-from .serializers import (CommentSerializer, ReviewSerializer,
-                          SignUpSerializer, TokenSerializer, UserSerializer)
-
+from reviews.models import Category, Genre, Review, Title
+from .permissions import (
+    AuthorModeratorAdminOrReadOnly,
+    IsAuthenticatedOrReadOnly
+)
 import api.permissions as pm
+from .mixins import CategoryGenreViewsetMixin
+from .permissions import (
+    AuthorModeratorAdminOrReadOnly,
+    IsAdminSuperUserOrReadOnly,
+    IsAuthenticatedOrReadOnly,
+    IsMethodPutAllowed,
+)
+from .serializers import (
+    CategorySerializer,
+    CommentSerializer,
+    GenreSerializer,
+    ReviewSerializer,
+    TitleSerializer,
+    SignUpSerializer,
+    TokenSerializer,
+    UserSerializer)
 
 User = get_user_model()
 
@@ -86,6 +103,37 @@ class UserDetail(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = UserSerializer
 
 
+class GenreViewSet(CategoryGenreViewsetMixin):
+    """ViewSet для жанров."""
+
+    queryset = Genre.objects.all()
+    serializer_class = GenreSerializer
+
+    def get_object(self):
+        return get_object_or_404(Genre, slug=self.kwargs.get('pk'))
+
+
+class CategoryViewSet(CategoryGenreViewsetMixin):
+    """ViewSet для категорий."""
+
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+
+    def get_object(self):
+        return get_object_or_404(Category, slug=self.kwargs.get('pk'))
+
+
+class TitleViewSet(viewsets.ModelViewSet):
+    """Viewset для произведений."""
+
+    queryset = Title.objects.all()
+    serializer_class = TitleSerializer
+    permission_classes = [IsAdminSuperUserOrReadOnly, IsMethodPutAllowed]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['category__slug', 'genre__slug', 'name', 'year']
+    pagination_class = PageNumberPagination
+
+
 class ReviewViewSet(viewsets.ModelViewSet):
     """ViewSet для отзывов."""
 
@@ -134,5 +182,5 @@ class CommentViewSet(viewsets.ModelViewSet):
         Создаёт комментарий, привязывая его
         к текущему пользователю и отзыву.
         """
-        review = get_object_or_404(Review, id=self.kwargs.get("review_id"))
+        review = get_object_or_404(Review, id=self.kwargs.get('review_id'))
         serializer.save(author=self.request.user, review=review)
