@@ -1,13 +1,44 @@
 import datetime
+from enum import Enum
 
-from django.contrib.auth import get_user_model
-from django.core.validators import MinValueValidator, MaxValueValidator
+from django.contrib.auth.models import AbstractUser
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
-from .constants import TEXT_LENGTH
+from .constants import CONFIRMATION_CODE_LENGTH, ROLE_LENGTH, TEXT_LENGTH
 from .mixins import CategoryGenreMixin
 
-User = get_user_model()
+
+class UserRole(Enum):
+    USER = "user"
+    MODERATOR = "moderator"
+    ADMIN = "admin"
+
+    @classmethod
+    def choices(cls):
+        return [(key.value, key.name) for key in cls]
+
+
+class User(AbstractUser):
+    email = models.EmailField(
+        unique=True, blank=False, null=False, verbose_name='Почта'
+    )
+    bio = models.TextField(null=True, verbose_name='Биография')
+    role = models.CharField(
+        max_length=ROLE_LENGTH,
+        choices=UserRole.choices(),
+        default=UserRole.USER.value,
+        verbose_name='Роль',
+    )
+    confirmation_code = models.CharField(
+        max_length=CONFIRMATION_CODE_LENGTH, null=True,
+        verbose_name='Код подтверждения',
+    )
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['username']
+
+    def __str__(self):
+        return self.username
 
 
 class Category(CategoryGenreMixin):

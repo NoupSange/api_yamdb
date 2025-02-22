@@ -77,3 +77,21 @@ class IsAuthenticatedOrReadOnly(permissions.BasePermission):
             request.method in permissions.SAFE_METHODS
             or request.user.is_authenticated
         )
+
+
+class IsAdminOrOwner(permissions.BasePermission):
+    """
+    Разрешает чтение и изменение собственной записи любому
+    авторизованному пользователю.
+    Разрешает чтение и изменение чужих записей только Администратору.
+    """
+
+    def has_object_permission(self, request, view, obj):
+        return (
+            request.user.is_authenticated
+            and (
+                request.user.role == 'admin'
+                or request.user.is_superuser
+                or request.user == obj
+            )
+        )
