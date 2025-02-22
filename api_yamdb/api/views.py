@@ -4,8 +4,7 @@ from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
 from django.utils.crypto import get_random_string
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import generics, status, viewsets
-from rest_framework import viewsets
+from rest_framework import filters, generics, status, viewsets
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
@@ -20,6 +19,7 @@ import api.permissions as pm
 from .mixins import CategoryGenreViewsetMixin
 from .permissions import (
     AuthorModeratorAdminOrReadOnly,
+    IsAdminOrOwner,
     IsAdminSuperUserOrReadOnly,
     IsAuthenticatedOrReadOnly,
     IsMethodPutAllowed,
@@ -32,7 +32,8 @@ from .serializers import (
     TitleSerializer,
     SignUpSerializer,
     TokenSerializer,
-    UserSerializer)
+    UserSerializer,
+)
 
 User = get_user_model()
 
@@ -53,7 +54,7 @@ class SignupView(APIView):
             user, created = User.objects.update_or_create(
                 email=email, username=username,
                 defaults={'confirmation_code': confirmation_code},
-                )
+            )
             subject = 'YaMDB Registration Confirmation'
             message = f'Your confirmation code is: {confirmation_code}'
             from_email = settings.DEFAULT_FROM_EMAIL
@@ -63,9 +64,15 @@ class SignupView(APIView):
                 send_mail(subject, message, from_email, recipient_list)
             except Exception:
                 user.delete()
-                return Response({'error': 'Failed to send confirmation email.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response(
+                    {'error': 'Failed to send confirmation email.'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
 
-            return Response({'email': email, 'username': username}, status=status.HTTP_200_OK)
+            return Response(
+                {'email': email, 'username': username},
+                status=status.HTTP_200_OK
+            )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -90,17 +97,28 @@ class TokenView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class UsersList(generics.ListCreateAPIView):
-    """Возвращает список пользователей."""
+class UsersViewSet(viewsets.ModelViewSet):
+    """Viewset для пользователей."""
+
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = (pm.IsAuthenticatedOrReadOnly,)
+    permission_classes = [IsAdminOrOwner, IsMethodPutAllowed]
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['username']
+    pagination_class = PageNumberPagination
 
-
-class UserDetail(generics.RetrieveUpdateDestroyAPIView):
-    """Возваращает объект конкретного пользователя."""
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
+    def get_object(self):
+        username = self.kwargs.get('pk')
+        user = get_object_or_404(
+            User,
+            username=(
+                self.request.user.username
+                if username == 'me'
+                else username
+            )
+        )
+        self.check_object_permissions(self.request, user)
+        return user
 
 
 class GenreViewSet(CategoryGenreViewsetMixin):
