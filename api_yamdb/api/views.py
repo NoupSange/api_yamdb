@@ -1,6 +1,8 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import send_mail
+from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
 from django.utils.crypto import get_random_string
 from django_filters.rest_framework import DjangoFilterBackend
@@ -11,29 +13,15 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from reviews.models import Category, Genre, Review, Title
-from .permissions import (
-    AuthorModeratorAdminOrReadOnly,
-    IsAuthenticatedOrReadOnly
-)
-import api.permissions as pm
+
 from .mixins import CategoryGenreViewsetMixin
-from .permissions import (
-    AuthorModeratorAdminOrReadOnly,
-    IsAdminOrOwner,
-    IsAdminSuperUserOrReadOnly,
-    IsAuthenticatedOrReadOnly,
-    IsMethodPutAllowed,
-)
-from .serializers import (
-    CategorySerializer,
-    CommentSerializer,
-    GenreSerializer,
-    ReviewSerializer,
-    TitleSerializer,
-    SignUpSerializer,
-    TokenSerializer,
-    UserSerializer,
-)
+from .permissions import (AuthorModeratorAdminOrReadOnly, IsAdminOrOwner,
+                          IsAdminSuperUserOrReadOnly,
+                          IsAuthenticatedOrReadOnly, IsMethodPutAllowed)
+from .serializers import (CategorySerializer, CommentSerializer,
+                          GenreSerializer, ReviewSerializer, SignUpSerializer,
+                          TitleSerializer, TokenSerializer, UserSerializer)
+import api.permissions as p
 
 User = get_user_model()
 
@@ -43,6 +31,7 @@ class SignupView(APIView):
     Регистрирует пользователя в БД.
     Отправляет код подтверждения на почту.
     """
+    permission_classes = [p.AllowAny]
 
     def post(self, request):
         serializer = SignUpSerializer(data=request.data)
@@ -50,11 +39,26 @@ class SignupView(APIView):
             email = serializer.validated_data['email']
             username = serializer.validated_data['username']
             confirmation_code = get_random_string(length=40)
+            try:
+                user = User.objects.get(email=email)
+                if user.username != username:
+                    return Response(
+                        {'error': 'User with this email already exists.'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+            except ObjectDoesNotExist:
+                pass
+            try:
+                user, created = User.objects.update_or_create(
+                    email=email, username=username,
+                    defaults={'confirmation_code': confirmation_code},
+                )
+            except IntegrityError:
+                return Response(
+                    {'error': 'User with this username already registered.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
 
-            user, created = User.objects.update_or_create(
-                email=email, username=username,
-                defaults={'confirmation_code': confirmation_code},
-            )
             subject = 'YaMDB Registration Confirmation'
             message = f'Your confirmation code is: {confirmation_code}'
             from_email = settings.DEFAULT_FROM_EMAIL
@@ -81,6 +85,7 @@ class TokenView(APIView):
     Сверяет код подтверждения пользователя.
     Выдает/обновляет токен для пользователя.
     """
+    permission_classes = [p.AllowAny]
 
     def post(self, request):
         serializer = TokenSerializer(data=request.data)
@@ -102,7 +107,7 @@ class UsersViewSet(viewsets.ModelViewSet):
 
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [IsAdminOrOwner, IsMethodPutAllowed]
+    # permission_classes = [p.IsAdmin]
     filter_backends = [filters.SearchFilter]
     search_fields = ['username']
     pagination_class = PageNumberPagination
@@ -120,12 +125,21 @@ class UsersViewSet(viewsets.ModelViewSet):
         self.check_object_permissions(self.request, user)
         return user
 
+    def get_permissions(self):
+        if self.action in ('partial_update', 'retrieve'):
+            if self.kwargs.get('pk') == "me":
+                return [p.OwnerOrReadOnly()]
+            # else:
+            #     return [p.IsAdmin()]
+        return [p.IsAdmin()]
+
 
 class GenreViewSet(CategoryGenreViewsetMixin):
     """ViewSet для жанров."""
 
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
+    permission_classes = [p.AdminOrReadOnly]
 
     def get_object(self):
         return get_object_or_404(Genre, slug=self.kwargs.get('pk'))
@@ -136,6 +150,7 @@ class CategoryViewSet(CategoryGenreViewsetMixin):
 
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
+    permission_classes = [p.AdminOrReadOnly]
 
     def get_object(self):
         return get_object_or_404(Category, slug=self.kwargs.get('pk'))
@@ -146,7 +161,7 @@ class TitleViewSet(viewsets.ModelViewSet):
 
     queryset = Title.objects.all()
     serializer_class = TitleSerializer
-    permission_classes = [IsAdminSuperUserOrReadOnly, IsMethodPutAllowed]
+    permission_clases = [p.AdminOrReadOnly]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['category__slug', 'genre__slug', 'name', 'year']
     pagination_class = PageNumberPagination
@@ -156,10 +171,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
     """ViewSet для отзывов."""
 
     serializer_class = ReviewSerializer
-    permission_classes = [
-        IsAuthenticatedOrReadOnly,
-        AuthorModeratorAdminOrReadOnly
-    ]
+    permission_classes = [p.OwnerOrReadOnly]
 
     def get_queryset(self):
         """Возвращает список отзывов для конкретного произведения."""
@@ -185,10 +197,7 @@ class CommentViewSet(viewsets.ModelViewSet):
     """ViewSet для комментариев."""
 
     serializer_class = CommentSerializer
-    permission_classes = [
-        IsAuthenticatedOrReadOnly,
-        AuthorModeratorAdminOrReadOnly
-    ]
+    permission_classes = [p.OwnerOrReadOnly]
 
     def get_queryset(self):
         """Возвращает список комментариев для конкретного отзыва."""
