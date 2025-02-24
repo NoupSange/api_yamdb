@@ -5,7 +5,9 @@ from django.contrib.auth.models import AbstractUser
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
-from .constants import CONFIRMATION_CODE_LENGTH, ROLE_LENGTH, TEXT_LENGTH
+from .constants import (
+    CONFIRMATION_CODE_LENGTH, EMAIL_LENGTH, ROLE_LENGTH, TEXT_LENGTH
+)
 from .mixins import CategoryGenreMixin
 
 
@@ -21,7 +23,11 @@ class User(AbstractUser):
     )
 
     email = models.EmailField(
-        unique=True, blank=False, null=False, verbose_name='Почта'
+        unique=True,
+        blank=False,
+        null=False,
+        verbose_name='Почта',
+        max_length=EMAIL_LENGTH,
     )
     bio = models.TextField(null=True, blank=True, verbose_name='Биография')
     role = models.CharField(
@@ -37,6 +43,9 @@ class User(AbstractUser):
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
 
+    class Meta:
+        ordering = ('id',)
+
     def __str__(self):
         return self.username
 
@@ -46,6 +55,7 @@ class Category(CategoryGenreMixin):
     class Meta:
         verbose_name = 'категория'
         verbose_name_plural = 'Категории'
+        ordering = ('id',)
 
 
 class Genre(CategoryGenreMixin):
@@ -53,6 +63,7 @@ class Genre(CategoryGenreMixin):
     class Meta:
         verbose_name = 'жанр'
         verbose_name_plural = 'Жанры'
+        ordering = ('id',)
 
 
 class Title(models.Model):
@@ -85,6 +96,7 @@ class Title(models.Model):
         default_related_name = 'titles'
         verbose_name = 'произведение'
         verbose_name_plural = 'Произведения'
+        ordering = ('id',)
 
     def __str__(self):
         return f'{self.name}, {self.year}'
@@ -117,6 +129,11 @@ class Review(models.Model):
         verbose_name = 'Отзыв'
         verbose_name_plural = 'Отзывы'
         ordering = ('pub_date',)
+        constraints = [
+            models.UniqueConstraint(
+                fields=('title', 'author'), name='unique_review'
+            )
+        ]
 
     def __str__(self):
         return f'Отзыв от {self.author.username} на {self.title.name}'

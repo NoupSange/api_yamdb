@@ -2,7 +2,7 @@ from rest_framework import filters, mixins, viewsets
 from rest_framework.pagination import PageNumberPagination
 
 from .permissions import (
-    IsAdminSuperUserOrReadOnly,
+    IsAdminOrReadOnly,
 )
 
 
@@ -12,7 +12,7 @@ class CategoryGenreViewsetMixin(
     mixins.DestroyModelMixin,
     viewsets.GenericViewSet,
 ):
-    permission_classes = [IsAdminSuperUserOrReadOnly]
+    permission_classes = [IsAdminOrReadOnly]
     filter_backends = [filters.SearchFilter]
     search_fields = ['name']
     pagination_class = PageNumberPagination

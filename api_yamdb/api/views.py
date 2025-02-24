@@ -1,23 +1,35 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.db import models
 from django.shortcuts import get_object_or_404
 from django.utils.crypto import get_random_string
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters,status, viewsets
+from rest_framework import filters, status, viewsets
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
-from reviews.models import Category, Genre, Review, Title
+from reviews.models import Comment, Category, Genre, Review, Title
 
+from .filters import TitleFilter
 from .mixins import CategoryGenreViewsetMixin
-from .permissions import (AuthorModeratorAdminOrReadOnly, IsAdminOrOwner,
-                          IsAdminSuperUserOrReadOnly,
-                          IsAuthenticatedOrReadOnly, IsMethodPutAllowed)
-from .serializers import (CategorySerializer, CommentSerializer,
-                          GenreSerializer, ReviewSerializer, SignUpSerializer,
-                          TitleSerializer, TokenSerializer, UserSerializer)
+from .permissions import (
+    AuthorModeratorAdminOrReadOnly,
+    IsAdminOrOwner,
+    IsAdminOrReadOnly,
+    IsMethodPutAllowed,
+)
+from .serializers import (
+    CategorySerializer,
+    CommentSerializer,
+    GenreSerializer,
+    ReviewSerializer,
+    TitleSerializer,
+    SignUpSerializer,
+    TokenSerializer,
+    UserSerializer,
+)
 import api.permissions as p
 from .utils import (check_fields_availability, check_user_objects,
                     send_confirmation_code)
@@ -103,11 +115,15 @@ class UsersViewSet(viewsets.ModelViewSet):
         self.check_object_permissions(self.request, user)
         return user
 
-    def get_permissions(self):
-        if self.action in ('partial_update', 'retrieve'):
-            if self.kwargs.get('pk') == "me":
-                return [p.OwnerOrReadOnly()]
-        return [p.IsAdmin()]
+    def perform_update(self, serializer):
+        is_me = self.kwargs.get('pk') == 'me'
+        is_admin = self.request.user.is_authenticated and (
+            self.request.user.role == 'admin' or self.request.user.is_superuser
+        )
+
+        if is_me and not is_admin and 'role' in serializer.validated_data:
+            del serializer.validated_data['role']
+        serializer.save()
 
 
 class GenreViewSet(CategoryGenreViewsetMixin):
@@ -137,9 +153,9 @@ class TitleViewSet(viewsets.ModelViewSet):
 
     queryset = Title.objects.all()
     serializer_class = TitleSerializer
-    permission_clases = [p.AdminOrReadOnly]
+    permission_classes = [IsAdminOrReadOnly, IsMethodPutAllowed]
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['category__slug', 'genre__slug', 'name', 'year']
+    filterset_class = TitleFilter
     pagination_class = PageNumberPagination
 
 
@@ -147,25 +163,19 @@ class ReviewViewSet(viewsets.ModelViewSet):
     """ViewSet для отзывов."""
 
     serializer_class = ReviewSerializer
-    permission_classes = [p.OwnerOrReadOnly]
+    permission_classes = [AuthorModeratorAdminOrReadOnly, IsMethodPutAllowed]
 
-    def get_queryset(self):
-        """Возвращает список отзывов для конкретного произведения."""
-        title = get_object_or_404(Title, pk=self.kwargs.get('title_id'))
-        return title.reviews
+    def get_title(self) -> Title:
+        """Получение произведения по ID."""
+        return get_object_or_404(Title, id=self.kwargs.get('title_id'))
 
-    def perform_create(self, serializer):
-        """
-        Создаёт отзыв, привязывая его к текущему
-        пользователю и произведению.
-        """
-        title = get_object_or_404(Title, id=self.kwargs.get("title_id"))
-        if Review.objects.filter(
-            author=self.request.user, title=title
-        ).exists():
-            raise PermissionDenied(
-                "Вы уже оставляли отзыв на это произведение."
-            )
+    def get_queryset(self) -> models.QuerySet[Review]:
+        """Возвращает все отзывы произведения."""
+        return self.get_title().reviews.all()
+
+    def perform_create(self, serializer) -> None:
+        """Переопределение метода добавления отзыва."""
+        title = self.get_title()
         serializer.save(author=self.request.user, title=title)
 
 
@@ -173,17 +183,16 @@ class CommentViewSet(viewsets.ModelViewSet):
     """ViewSet для комментариев."""
 
     serializer_class = CommentSerializer
-    permission_classes = [p.OwnerOrReadOnly]
+    permission_classes = [AuthorModeratorAdminOrReadOnly, IsMethodPutAllowed]
 
-    def get_queryset(self):
-        """Возвращает список комментариев для конкретного отзыва."""
-        review = get_object_or_404(Review, pk=self.kwargs.get('review_id'))
-        return review.comments
+    def get_review(self) -> Review:
+        """Получение отзыва по ID."""
+        return get_object_or_404(Review, id=self.kwargs.get('review_id'))
 
-    def perform_create(self, serializer):
-        """
-        Создаёт комментарий, привязывая его
-        к текущему пользователю и отзыву.
-        """
-        review = get_object_or_404(Review, id=self.kwargs.get('review_id'))
-        serializer.save(author=self.request.user, review=review)
+    def get_queryset(self) -> models.QuerySet[Comment]:
+        """Возвращает все комментарии для отзыва."""
+        return self.get_review().comments.all().order_by('-pub_date')
+
+    def perform_create(self, serializer) -> None:
+        """Переопределение метода добавления комментария."""
+        serializer.save(author=self.request.user, review=self.get_review())
