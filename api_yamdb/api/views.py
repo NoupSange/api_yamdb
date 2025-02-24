@@ -188,7 +188,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
     """ViewSet для отзывов."""
 
     serializer_class = ReviewSerializer
-    permission_classes = [AuthorModeratorAdminOrReadOnly]
+    permission_classes = [AuthorModeratorAdminOrReadOnly, IsMethodPutAllowed]
 
     def get_title(self) -> Title:
         """Получение произведения по ID."""

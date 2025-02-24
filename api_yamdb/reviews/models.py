@@ -55,6 +55,7 @@ class Category(CategoryGenreMixin):
     class Meta:
         verbose_name = 'категория'
         verbose_name_plural = 'Категории'
+        ordering = ('id',)
 
 
 class Genre(CategoryGenreMixin):
@@ -62,6 +63,7 @@ class Genre(CategoryGenreMixin):
     class Meta:
         verbose_name = 'жанр'
         verbose_name_plural = 'Жанры'
+        ordering = ('id',)
 
 
 class Title(models.Model):
