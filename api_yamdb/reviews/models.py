@@ -43,6 +43,9 @@ class User(AbstractUser):
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
 
+    class Meta:
+        ordering = ('id',)
+
     def __str__(self):
         return self.username
 
@@ -91,6 +94,7 @@ class Title(models.Model):
         default_related_name = 'titles'
         verbose_name = 'произведение'
         verbose_name_plural = 'Произведения'
+        ordering = ('id',)
 
     def __str__(self):
         return f'{self.name}, {self.year}'
