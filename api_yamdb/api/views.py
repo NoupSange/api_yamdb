@@ -206,14 +206,6 @@ class ReviewViewSet(viewsets.ModelViewSet):
         title = self.get_title()
         serializer.save(author=self.request.user, title=title)
 
-    def perform_update(self, serializer) -> None:
-        """Переопределение метода обновления отзыва."""
-        serializer.save()
-
-    def perform_destroy(self, instance) -> None:
-        """Переопределение метода удаления отзыва."""
-        instance.delete()
-
 
 class CommentViewSet(viewsets.ModelViewSet):
     """ViewSet для комментариев."""
