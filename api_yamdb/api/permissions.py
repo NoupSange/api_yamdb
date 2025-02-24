@@ -1,7 +1,7 @@
 from rest_framework import permissions
 
 
-class IsAdminSuperUserOrReadOnly(permissions.BasePermission):
+class IsAdminOrReadOnly(permissions.BasePermission):
     """
     Разрешает редактирование и удаление контента администратору и суперюзеру.
     Чтение доступно всем.
@@ -10,14 +10,9 @@ class IsAdminSuperUserOrReadOnly(permissions.BasePermission):
     def has_permission(self, request, view):
         return (
             request.method in permissions.SAFE_METHODS
-            or request.user.is_authenticated
-        )
-
-    def has_object_permission(self, request, view, obj):
-        return (
-            request.method in permissions.SAFE_METHODS
-            or request.user.is_admin
-            or request.user.is_superuser
+            or request.user.is_authenticated and (
+                request.user.role == 'admin' or request.user.is_superuser
+            )
         )
 
 
@@ -33,7 +28,7 @@ class IsAdmin(permissions.BasePermission):
 
     def has_permission(self, request, view):
         return request.user.is_authenticated and (
-            request.user.is_admin or request.user.is_superuser
+            request.user.role == 'admin' or request.user.is_superuser
         )
 
 
@@ -41,7 +36,9 @@ class IsModerator(permissions.BasePermission):
     """Разрешает доступ модераторам и выше."""
 
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.is_moderator
+        return (
+            request.user.is_authenticated and request.user.role == 'moderator'
+        )
 
 
 class AuthorModeratorAdminOrReadOnly(permissions.BasePermission):
@@ -61,8 +58,7 @@ class AuthorModeratorAdminOrReadOnly(permissions.BasePermission):
         return (
             request.method in permissions.SAFE_METHODS
             or obj.author == request.user
-            or request.user.is_moderator
-            or request.user.is_admin
+            or request.user.role in ('admin', 'moderator')
         )
 
 
@@ -85,6 +81,15 @@ class IsAdminOrOwner(permissions.BasePermission):
     авторизованному пользователю.
     Разрешает чтение и изменение чужих записей только Администратору.
     """
+
+    def has_permission(self, request, view):
+        is_auth = request.user.is_authenticated
+        if view.action == 'list':
+            return is_auth and (
+                request.user.role == 'admin'
+                or request.user.is_superuser
+            )
+        return is_auth
 
     def has_object_permission(self, request, view, obj):
         return (
