@@ -1,4 +1,5 @@
 from rest_framework import permissions
+from rest_framework.exceptions import MethodNotAllowed
 
 
 class IsAdminOrReadOnly(permissions.BasePermission):
@@ -20,7 +21,9 @@ class IsMethodPutAllowed(permissions.BasePermission):
     """Запрещает метод PUT."""
 
     def has_permission(self, request, view):
-        return request.method != 'PUT'
+        if request.method == 'PUT':
+            raise MethodNotAllowed('PUT', detail='Метод PUT не разрешен.')
+        return True
 
 
 class IsAdmin(permissions.BasePermission):
@@ -42,24 +45,24 @@ class IsModerator(permissions.BasePermission):
 
 
 class AuthorModeratorAdminOrReadOnly(permissions.BasePermission):
+    """Разрешает:
+    - moderator, admin - право удалять и редактировать любые отзывы и
+    комментарии.
+    - author - создателю объекта разрешено удаление и редактирование
+    созданного объекта.
+    - остальным только чтение.
     """
-    Разрешает редактирование и удаление контента
-    его автору, модератору или администратору.
-    Чтение доступно всем.
-    """
-
     def has_permission(self, request, view):
-        return (
-            request.method in permissions.SAFE_METHODS
-            or request.user.is_authenticated
-        )
+        return (request.method in permissions.SAFE_METHODS
+                or request.user.is_authenticated
+                )
 
     def has_object_permission(self, request, view, obj):
-        return (
-            request.method in permissions.SAFE_METHODS
-            or obj.author == request.user
-            or request.user.role in ('admin', 'moderator')
-        )
+        return (request.method in permissions.SAFE_METHODS
+                or request.user.role == 'admin'
+                or obj.author == request.user
+                or request.user.role == 'moderator'
+                )
 
 
 class IsAuthenticatedOrReadOnly(permissions.BasePermission):

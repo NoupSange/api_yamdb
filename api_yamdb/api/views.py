@@ -1,27 +1,22 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
+from django.db import models
 from django.shortcuts import get_object_or_404
 from django.utils.crypto import get_random_string
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, generics, status, viewsets
-from rest_framework.exceptions import PermissionDenied
+from rest_framework import filters, status, viewsets
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
-from reviews.models import Category, Genre, Review, Title
-from .permissions import (
-    AuthorModeratorAdminOrReadOnly,
-    IsAuthenticatedOrReadOnly
-)
-import api.permissions as pm
+from reviews.models import Comment, Category, Genre, Review, Title
+
 from .mixins import CategoryGenreViewsetMixin
 from .permissions import (
     AuthorModeratorAdminOrReadOnly,
     IsAdminOrOwner,
     IsAdminOrReadOnly,
-    IsAuthenticatedOrReadOnly,
     IsMethodPutAllowed,
 )
 from .serializers import (
@@ -195,28 +190,20 @@ class ReviewViewSet(viewsets.ModelViewSet):
     """ViewSet для отзывов."""
 
     serializer_class = ReviewSerializer
-    permission_classes = [
-        IsAuthenticatedOrReadOnly,
-        AuthorModeratorAdminOrReadOnly
-    ]
+    permission_classes = [AuthorModeratorAdminOrReadOnly]
+    http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
 
-    def get_queryset(self):
-        """Возвращает список отзывов для конкретного произведения."""
-        title = get_object_or_404(Title, pk=self.kwargs.get('title_id'))
-        return title.reviews
+    def get_title(self) -> Title:
+        """Получение произведения по ID."""
+        return get_object_or_404(Title, id=self.kwargs.get('title_id'))
 
-    def perform_create(self, serializer):
-        """
-        Создаёт отзыв, привязывая его к текущему
-        пользователю и произведению.
-        """
-        title = get_object_or_404(Title, id=self.kwargs.get("title_id"))
-        if Review.objects.filter(
-            author=self.request.user, title=title
-        ).exists():
-            raise PermissionDenied(
-                "Вы уже оставляли отзыв на это произведение."
-            )
+    def get_queryset(self) -> models.QuerySet[Review]:
+        """Возвращает все отзывы произведения."""
+        return self.get_title().reviews.all()
+
+    def perform_create(self, serializer) -> None:
+        """Переопределение метода добавления отзыва."""
+        title = self.get_title()
         serializer.save(author=self.request.user, title=title)
 
 
@@ -224,20 +211,16 @@ class CommentViewSet(viewsets.ModelViewSet):
     """ViewSet для комментариев."""
 
     serializer_class = CommentSerializer
-    permission_classes = [
-        IsAuthenticatedOrReadOnly,
-        AuthorModeratorAdminOrReadOnly
-    ]
+    permission_classes = [AuthorModeratorAdminOrReadOnly, IsMethodPutAllowed]
 
-    def get_queryset(self):
-        """Возвращает список комментариев для конкретного отзыва."""
-        review = get_object_or_404(Review, pk=self.kwargs.get('review_id'))
-        return review.comments
+    def get_review(self) -> Review:
+        """Получение отзыва по ID."""
+        return get_object_or_404(Review, id=self.kwargs.get('review_id'))
 
-    def perform_create(self, serializer):
-        """
-        Создаёт комментарий, привязывая его
-        к текущему пользователю и отзыву.
-        """
-        review = get_object_or_404(Review, id=self.kwargs.get('review_id'))
-        serializer.save(author=self.request.user, review=review)
+    def get_queryset(self) -> models.QuerySet[Comment]:
+        """Возвращает все комментарии для отзыва."""
+        return self.get_review().comments.all().order_by('-pub_date')
+
+    def perform_create(self, serializer) -> None:
+        """Переопределение метода добавления комментария."""
+        serializer.save(author=self.request.user, review=self.get_review())

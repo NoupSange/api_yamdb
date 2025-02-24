@@ -43,7 +43,7 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = (
-            "username", "email", "first_name", "last_name", "bio", "role"
+            'username', 'email', 'first_name', 'last_name', 'bio', 'role'
         )
 
 
@@ -136,7 +136,7 @@ class ReviewSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Review
-        fields = ('id', 'author', 'title', 'text', 'score', 'pub_date')
+        fields = ('id', 'author', 'text', 'score', 'pub_date')
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -148,4 +148,4 @@ class CommentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Comment
-        fields = ('id', 'author', 'review', 'text', 'pub_date')
+        fields = ('id', 'author', 'text', 'pub_date')
