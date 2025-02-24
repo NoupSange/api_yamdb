@@ -5,24 +5,18 @@ from django.db import models
 from django.shortcuts import get_object_or_404
 from django.utils.crypto import get_random_string
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, generics, status, viewsets
-from rest_framework.exceptions import ValidationError
+from rest_framework import filters, status, viewsets
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from reviews.models import Comment, Category, Genre, Review, Title
-from .permissions import (
-    AuthorModeratorAdminOrReadOnly,
-    IsAuthenticatedOrReadOnly
-)
-import api.permissions as pm
+
 from .mixins import CategoryGenreViewsetMixin
 from .permissions import (
     AuthorModeratorAdminOrReadOnly,
     IsAdminOrOwner,
     IsAdminOrReadOnly,
-    IsAuthenticatedOrReadOnly,
     IsMethodPutAllowed,
 )
 from .serializers import (
@@ -197,26 +191,19 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
     serializer_class = ReviewSerializer
     permission_classes = [AuthorModeratorAdminOrReadOnly]
-    http_method_names = ["get", "post", "patch", "delete", "head", "options"]
+    http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
 
     def get_title(self) -> Title:
         """Получение произведения по ID."""
-        return get_object_or_404(Title, id=self.kwargs.get("title_id"))
+        return get_object_or_404(Title, id=self.kwargs.get('title_id'))
 
     def get_queryset(self) -> models.QuerySet[Review]:
         """Возвращает все отзывы произведения."""
         return self.get_title().reviews.all()
 
     def perform_create(self, serializer) -> None:
-        """Переопределение метода добавления отзыва.
-
-        Проверка уникальности.
-        """
+        """Переопределение метода добавления отзыва."""
         title = self.get_title()
-        if title.reviews.filter(author=self.request.user).exists():
-            raise ValidationError(
-                "Вы уже оставляли отзыв на это произведение."
-            )
         serializer.save(author=self.request.user, title=title)
 
     def perform_update(self, serializer) -> None:
@@ -236,7 +223,7 @@ class CommentViewSet(viewsets.ModelViewSet):
 
     def get_review(self) -> Review:
         """Получение отзыва по ID."""
-        return get_object_or_404(Review, id=self.kwargs.get("review_id"))
+        return get_object_or_404(Review, id=self.kwargs.get('review_id'))
 
     def get_queryset(self) -> models.QuerySet[Comment]:
         """Возвращает все комментарии для отзыва."""
