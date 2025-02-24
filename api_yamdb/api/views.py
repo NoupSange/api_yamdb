@@ -12,6 +12,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from reviews.models import Comment, Category, Genre, Review, Title
 
+from .filters import TitleFilter
 from .mixins import CategoryGenreViewsetMixin
 from .permissions import (
     AuthorModeratorAdminOrReadOnly,
@@ -97,7 +98,7 @@ class UsersViewSet(viewsets.ModelViewSet):
 
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [IsAdminOrOwner]
+    permission_classes = [IsAdminOrOwner, IsMethodPutAllowed]
     filter_backends = [filters.SearchFilter]
     search_fields = ['username']
     pagination_class = PageNumberPagination
@@ -116,9 +117,6 @@ class UsersViewSet(viewsets.ModelViewSet):
         return user
 
     def update(self, request, *args, **kwargs):
-        if self.request.method == 'PUT':
-            return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
-
         is_me = self.kwargs.get('pk') == 'me'
         is_admin = self.request.user.is_authenticated and (
             self.request.user.role == 'admin' or self.request.user.is_superuser
@@ -182,7 +180,7 @@ class TitleViewSet(viewsets.ModelViewSet):
     serializer_class = TitleSerializer
     permission_classes = [IsAdminOrReadOnly, IsMethodPutAllowed]
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['category__slug', 'genre__slug', 'name', 'year']
+    filterset_class = TitleFilter
     pagination_class = PageNumberPagination
 
 
@@ -191,7 +189,6 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
     serializer_class = ReviewSerializer
     permission_classes = [AuthorModeratorAdminOrReadOnly]
-    http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
 
     def get_title(self) -> Title:
         """Получение произведения по ID."""
