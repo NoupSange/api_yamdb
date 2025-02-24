@@ -5,29 +5,35 @@ from django.contrib.auth.models import AbstractUser
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
-from .constants import CONFIRMATION_CODE_LENGTH, ROLE_LENGTH, TEXT_LENGTH
+from .constants import (
+    CONFIRMATION_CODE_LENGTH, EMAIL_LENGTH, ROLE_LENGTH, TEXT_LENGTH
+)
 from .mixins import CategoryGenreMixin
 
 
-class UserRole(Enum):
+class User(AbstractUser):
     USER = "user"
     MODERATOR = "moderator"
     ADMIN = "admin"
 
-    @classmethod
-    def choices(cls):
-        return [(key.value, key.name) for key in cls]
-
-
-class User(AbstractUser):
-    email = models.EmailField(
-        unique=True, blank=False, null=False, verbose_name='Почта'
+    ROLE_CHOICES = (
+        (USER, "Пользователь"),
+        (MODERATOR, "Модератор"),
+        (ADMIN, "Админ")
     )
-    bio = models.TextField(null=True, verbose_name='Биография')
+
+    email = models.EmailField(
+        unique=True,
+        blank=False,
+        null=False,
+        verbose_name='Почта',
+        max_length=EMAIL_LENGTH,
+    )
+    bio = models.TextField(null=True, blank=True, verbose_name='Биография')
     role = models.CharField(
         max_length=ROLE_LENGTH,
-        choices=UserRole.choices(),
-        default=UserRole.USER.value,
+        choices=ROLE_CHOICES,
+        default=USER,
         verbose_name='Роль',
     )
     confirmation_code = models.CharField(

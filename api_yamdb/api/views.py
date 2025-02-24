@@ -20,7 +20,7 @@ from .mixins import CategoryGenreViewsetMixin
 from .permissions import (
     AuthorModeratorAdminOrReadOnly,
     IsAdminOrOwner,
-    IsAdminSuperUserOrReadOnly,
+    IsAdminOrReadOnly,
     IsAuthenticatedOrReadOnly,
     IsMethodPutAllowed,
 )
@@ -102,7 +102,7 @@ class UsersViewSet(viewsets.ModelViewSet):
 
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [IsAdminOrOwner, IsMethodPutAllowed]
+    permission_classes = [IsAdminOrOwner]
     filter_backends = [filters.SearchFilter]
     search_fields = ['username']
     pagination_class = PageNumberPagination
@@ -119,6 +119,45 @@ class UsersViewSet(viewsets.ModelViewSet):
         )
         self.check_object_permissions(self.request, user)
         return user
+
+    def update(self, request, *args, **kwargs):
+        if self.request.method == 'PUT':
+            return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+        is_me = self.kwargs.get('pk') == 'me'
+        is_admin = self.request.user.is_authenticated and (
+            self.request.user.role == 'admin' or self.request.user.is_superuser
+        )
+
+        if (
+            self.request.method == 'PATCH'
+            and not (is_me or is_admin)
+        ):
+            return Response(status=status.HTTP_403_FORBIDDEN)
+        return super().update(request, *args, **kwargs)
+
+    def perform_update(self, serializer):
+        is_me = self.kwargs.get('pk') == 'me'
+        is_admin = self.request.user.is_authenticated and (
+            self.request.user.role == 'admin' or self.request.user.is_superuser
+        )
+
+        if is_me and not is_admin and 'role' in serializer.validated_data:
+            del serializer.validated_data['role']
+        serializer.save()
+
+    def destroy(self, request, *args, **kwargs):
+        is_me = self.kwargs.get('pk') == 'me'
+        is_admin = self.request.user.is_authenticated and (
+            self.request.user.role == 'admin' or self.request.user.is_superuser
+        )
+
+        if is_me and not is_admin:
+            return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+        if not is_admin:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+        return super().destroy(request, *args, **kwargs)
 
 
 class GenreViewSet(CategoryGenreViewsetMixin):
@@ -146,7 +185,7 @@ class TitleViewSet(viewsets.ModelViewSet):
 
     queryset = Title.objects.all()
     serializer_class = TitleSerializer
-    permission_classes = [IsAdminSuperUserOrReadOnly, IsMethodPutAllowed]
+    permission_classes = [IsAdminOrReadOnly, IsMethodPutAllowed]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['category__slug', 'genre__slug', 'name', 'year']
     pagination_class = PageNumberPagination
