@@ -1,12 +1,9 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ObjectDoesNotExist
-from django.core.mail import send_mail
-from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
 from django.utils.crypto import get_random_string
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, generics, status, viewsets
+from rest_framework import filters,status, viewsets
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
@@ -22,6 +19,8 @@ from .serializers import (CategorySerializer, CommentSerializer,
                           GenreSerializer, ReviewSerializer, SignUpSerializer,
                           TitleSerializer, TokenSerializer, UserSerializer)
 import api.permissions as p
+from .utils import (check_fields_availability, check_user_objects,
+                    send_confirmation_code)
 
 User = get_user_model()
 
@@ -39,44 +38,23 @@ class SignupView(APIView):
             email = serializer.validated_data['email']
             username = serializer.validated_data['username']
             confirmation_code = get_random_string(length=40)
-            try:
-                user = User.objects.get(email=email)
-                if user.username != username:
-                    return Response(
-                        {'error': 'User with this email already exists.'},
-                        status=status.HTTP_403_FORBIDDEN
-                    )
-            except ObjectDoesNotExist:
-                pass
-            try:
-                user, created = User.objects.update_or_create(
+
+            (both_exists, username_exists, email_exists
+             ) = check_user_objects(User, email, username)
+
+            response, fields_occupied = check_fields_availability(
+                both_exists, username_exists, email_exists,
+                email, username
+            )
+            if fields_occupied:
+                return response
+
+            user, created = User.objects.update_or_create(
                     email=email, username=username,
                     defaults={'confirmation_code': confirmation_code},
-                )
-            except IntegrityError:
-                return Response(
-                    {'error': 'User with this username already registered.'},
-                    status=status.HTTP_403_FORBIDDEN
-                )
-
-            subject = 'YaMDB Registration Confirmation'
-            message = f'Your confirmation code is: {confirmation_code}'
-            from_email = settings.DEFAULT_FROM_EMAIL
-            recipient_list = [email]
-
-            try:
-                send_mail(subject, message, from_email, recipient_list)
-            except Exception:
-                user.delete()
-                return Response(
-                    {'error': 'Failed to send confirmation email.'},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                )
-
-            return Response(
-                {'email': email, 'username': username},
-                status=status.HTTP_200_OK
             )
+            send_confirmation_code(user, confirmation_code, email, username)
+            return response
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -107,7 +85,7 @@ class UsersViewSet(viewsets.ModelViewSet):
 
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    # permission_classes = [p.IsAdmin]
+    permission_classes = [p.IsAdmin]
     filter_backends = [filters.SearchFilter]
     search_fields = ['username']
     pagination_class = PageNumberPagination
@@ -129,8 +107,6 @@ class UsersViewSet(viewsets.ModelViewSet):
         if self.action in ('partial_update', 'retrieve'):
             if self.kwargs.get('pk') == "me":
                 return [p.OwnerOrReadOnly()]
-            # else:
-            #     return [p.IsAdmin()]
         return [p.IsAdmin()]
 
 
