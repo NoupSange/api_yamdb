@@ -1,5 +1,4 @@
 import datetime
-from enum import Enum
 
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import MaxValueValidator, MinValueValidator
@@ -16,7 +15,7 @@ class User(AbstractUser):
     MODERATOR = "moderator"
     ADMIN = "admin"
 
-    ROLE_CHOICES = (    
+    ROLE_CHOICES = (
         (USER, "Пользователь"),
         (MODERATOR, "Модератор"),
         (ADMIN, "Админ")

@@ -1,11 +1,9 @@
-from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.shortcuts import get_object_or_404
 from django.utils.crypto import get_random_string
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
-from rest_framework.exceptions import PermissionDenied
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -15,6 +13,7 @@ from reviews.models import Comment, Category, Genre, Review, Title
 from .filters import TitleFilter
 from .mixins import CategoryGenreViewsetMixin
 from .permissions import (
+    AllowAny,
     AuthorModeratorAdminOrReadOnly,
     IsAdminOrOwner,
     IsAdminOrReadOnly,
@@ -30,10 +29,8 @@ from .serializers import (
     TokenSerializer,
     UserSerializer,
 )
-import api.permissions as p
 from .utils import (check_fields_availability, check_user_objects,
                     send_confirmation_code)
-
 User = get_user_model()
 
 
@@ -42,7 +39,7 @@ class SignupView(APIView):
     Регистрирует пользователя в БД.
     Отправляет код подтверждения на почту.
     """
-    permission_classes = [p.AllowAny]
+    permission_classes = [AllowAny]
 
     def post(self, request):
         serializer = SignUpSerializer(data=request.data)
@@ -75,7 +72,7 @@ class TokenView(APIView):
     Сверяет код подтверждения пользователя.
     Выдает/обновляет токен для пользователя.
     """
-    permission_classes = [p.AllowAny]
+    permission_classes = [AllowAny]
 
     def post(self, request):
         serializer = TokenSerializer(data=request.data)
@@ -97,7 +94,7 @@ class UsersViewSet(viewsets.ModelViewSet):
 
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [p.IsAdmin]
+    permission_classes = [IsAdminOrOwner, IsMethodPutAllowed]
     filter_backends = [filters.SearchFilter]
     search_fields = ['username']
     pagination_class = PageNumberPagination
@@ -131,7 +128,6 @@ class GenreViewSet(CategoryGenreViewsetMixin):
 
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
-    permission_classes = [p.AdminOrReadOnly]
 
     def get_object(self):
         return get_object_or_404(Genre, slug=self.kwargs.get('pk'))
@@ -142,7 +138,6 @@ class CategoryViewSet(CategoryGenreViewsetMixin):
 
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classes = [p.AdminOrReadOnly]
 
     def get_object(self):
         return get_object_or_404(Category, slug=self.kwargs.get('pk'))

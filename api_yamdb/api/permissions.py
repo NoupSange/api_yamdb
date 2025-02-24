@@ -7,56 +7,6 @@ class AllowAny(permissions.BasePermission):
     pass
 
 
-class IsAdmin(permissions.BasePermission):
-    """Разрешает доступ только пользователю с ролью администратора."""
-    def has_permission(self, request, view):
-        return request.user.is_authenticated and (
-            request.user.role == "admin" or request.user.is_superuser
-        )
-
-    def has_object_permission(self, request, view, obj):
-        return True
-
-
-class AdminOrReadOnly(permissions.BasePermission):
-    """Разрешает просмотр всем, изменения только админу."""
-    def has_permission(self, request, view):
-        if request.method in permissions.SAFE_METHODS:
-            return True
-        return request.user.is_authenticated and (
-            request.user.role == "admin" or request.user.is_superuser
-        )
-
-
-class OwnerOrReadOnly(permissions.BasePermission):
-    """
-    Разрешает просмотр всем.
-    Разрешает добавить новый
-    объект аутентифицированному пользователю.
-    Разрешает доступ к конкретным объектам только авторму,
-    модератору или админу.
-    """
-    def has_permission(self, request, view):
-        if (request.method in permissions.SAFE_METHODS
-           and request.user.is_authenticated):
-            return True
-        if request.method == 'PATCH':
-            return True
-
-    def has_object_permission(self, request, view, obj):
-        if request.method in permissions.SAFE_METHODS:
-            return True
-        try:
-            return (
-                obj.author == request.user
-                or request.user.role == "moderator"
-                or request.user.role == "admin"
-            )
-        except AttributeError:
-            pass
-        return True
-
-
 class IsAdminOrReadOnly(permissions.BasePermission):
     """
     Разрешает редактирование и удаление контента администратору и суперюзеру.
