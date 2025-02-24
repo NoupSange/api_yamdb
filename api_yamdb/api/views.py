@@ -116,19 +116,6 @@ class UsersViewSet(viewsets.ModelViewSet):
         self.check_object_permissions(self.request, user)
         return user
 
-    def update(self, request, *args, **kwargs):
-        is_me = self.kwargs.get('pk') == 'me'
-        is_admin = self.request.user.is_authenticated and (
-            self.request.user.role == 'admin' or self.request.user.is_superuser
-        )
-
-        if (
-            self.request.method == 'PATCH'
-            and not (is_me or is_admin)
-        ):
-            return Response(status=status.HTTP_403_FORBIDDEN)
-        return super().update(request, *args, **kwargs)
-
     def perform_update(self, serializer):
         is_me = self.kwargs.get('pk') == 'me'
         is_admin = self.request.user.is_authenticated and (
@@ -138,19 +125,6 @@ class UsersViewSet(viewsets.ModelViewSet):
         if is_me and not is_admin and 'role' in serializer.validated_data:
             del serializer.validated_data['role']
         serializer.save()
-
-    def destroy(self, request, *args, **kwargs):
-        is_me = self.kwargs.get('pk') == 'me'
-        is_admin = self.request.user.is_authenticated and (
-            self.request.user.role == 'admin' or self.request.user.is_superuser
-        )
-
-        if is_me and not is_admin:
-            return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
-
-        if not is_admin:
-            return Response(status=status.HTTP_403_FORBIDDEN)
-        return super().destroy(request, *args, **kwargs)
 
 
 class GenreViewSet(CategoryGenreViewsetMixin):
