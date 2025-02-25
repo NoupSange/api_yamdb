@@ -5,8 +5,9 @@ from django.utils.crypto import get_random_string
 
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -18,7 +19,7 @@ from .filters import TitleFilter
 from .mixins import CategoryGenreViewsetMixin
 from .permissions import (
     AuthorModeratorAdminOrReadOnly,
-    IsAdminOrOwner,
+    IsAdmin,
     IsAdminOrReadOnly,
     IsMethodPutAllowed,
 )
@@ -107,33 +108,39 @@ class UsersViewSet(viewsets.ModelViewSet):
 
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [IsAdminOrOwner, IsMethodPutAllowed]
+    permission_classes = [IsAdmin]
     filter_backends = [filters.SearchFilter]
     search_fields = ['username']
     pagination_class = PageNumberPagination
+    http_method_names = ['get', 'post', 'delete', 'patch']
 
     def get_object(self):
-        username = self.kwargs.get('pk')
-        user = get_object_or_404(
-            User,
-            username=(
-                self.request.user.username
-                if username == OWNER_USERNAME_URL
-                else username
+        return get_object_or_404(User, username=self.kwargs.get('pk'))
+
+    @action(
+        detail=False,
+        methods=['get', 'patch'],
+        url_path=OWNER_USERNAME_URL,
+        permission_classes=[IsAuthenticated]
+    )
+    def personal_info(self, request):
+        if request.method == 'GET':
+            serializer = self.get_serializer(request.user)
+            return Response(serializer.data)
+
+        if request.method == 'PATCH':
+            data = request.data.copy()
+            if 'role' in data:
+                del data['role']
+            serializer = self.get_serializer(
+                request.user, data=data, partial=True
             )
-        )
-        self.check_object_permissions(self.request, user)
-        return user
-
-    def perform_update(self, serializer):
-        is_me = self.kwargs.get('pk') == OWNER_USERNAME_URL
-        is_admin = self.request.user.is_authenticated and (
-            self.request.user.role == 'admin' or self.request.user.is_superuser
-        )
-
-        if is_me and not is_admin and 'role' in serializer.validated_data:
-            del serializer.validated_data['role']
-        serializer.save()
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(
+                serializer.errors, status=status.HTTP_400_BAD_REQUEST
+            )
 
 
 class GenreViewSet(CategoryGenreViewsetMixin):
