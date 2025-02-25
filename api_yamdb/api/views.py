@@ -1,6 +1,4 @@
-from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
 from django.utils.crypto import get_random_string
 
@@ -16,6 +14,7 @@ from reviews.models import Category, Genre, Review, Title
 from .filters import TitleFilter
 from .mixins import CategoryGenreViewsetMixin
 from .permissions import (
+    AllowAny,
     AuthorModeratorAdminOrReadOnly,
     IsAdminOrOwner,
     IsAdminOrReadOnly,
@@ -31,6 +30,9 @@ from .serializers import (
     TokenSerializer,
     UserSerializer,
 )
+from .utils import (
+    check_fields_availability, check_user_objects, send_confirmation_code
+)
 
 User = get_user_model()
 
@@ -41,6 +43,8 @@ class SignupView(APIView):
     Отправляет код подтверждения на почту.
     """
 
+    permission_classes = [AllowAny]
+
     def post(self, request):
         serializer = SignUpSerializer(data=request.data)
         if serializer.is_valid():
@@ -48,28 +52,27 @@ class SignupView(APIView):
             username = serializer.validated_data['username']
             confirmation_code = get_random_string(length=40)
 
+            (
+                both_exists, username_exists, email_exists
+            ) = check_user_objects(User, email, username)
+
+            response, fields_occupied = check_fields_availability(
+                both_exists,
+                username_exists,
+                email_exists,
+                email,
+                username,
+            )
+            if fields_occupied:
+                return Response(response[0], response[1])
+
             user, created = User.objects.update_or_create(
-                email=email, username=username,
+                email=email,
+                username=username,
                 defaults={'confirmation_code': confirmation_code},
             )
-            subject = 'YaMDB Registration Confirmation'
-            message = f'Your confirmation code is: {confirmation_code}'
-            from_email = settings.DEFAULT_FROM_EMAIL
-            recipient_list = [email]
-
-            try:
-                send_mail(subject, message, from_email, recipient_list)
-            except Exception:
-                user.delete()
-                return Response(
-                    {'error': 'Failed to send confirmation email.'},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                )
-
-            return Response(
-                {'email': email, 'username': username},
-                status=status.HTTP_200_OK
-            )
+            send_confirmation_code(user, confirmation_code, email, username)
+            return Response(response[0], response[1])
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -78,6 +81,8 @@ class TokenView(APIView):
     Сверяет код подтверждения пользователя.
     Выдает/обновляет токен для пользователя.
     """
+
+    permission_classes = [AllowAny]
 
     def post(self, request):
         serializer = TokenSerializer(data=request.data)

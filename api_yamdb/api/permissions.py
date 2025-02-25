@@ -2,6 +2,11 @@ from rest_framework import permissions
 from rest_framework.exceptions import MethodNotAllowed
 
 
+class AllowAny(permissions.BasePermission):
+    """Разрешает доступ всем пользователям."""
+    pass
+
+
 class IsAdminOrReadOnly(permissions.BasePermission):
     """
     Разрешает редактирование и удаление контента администратору и суперюзеру.

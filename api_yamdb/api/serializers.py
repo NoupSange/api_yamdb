@@ -2,15 +2,21 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers
+
+from reviews.constants import (
+    CONFIRMATION_CODE_LENGTH, EMAIL_LENGTH, USERNAME_LENGTH
+)
 from reviews.models import Category, Comment, Genre, Review, Title
-from reviews.constants import CONFIRMATION_CODE_LENGTH, USERNAME_LENGTH
+
 
 User = get_user_model()
 
 
 class SignUpSerializer(serializers.Serializer):
-    email = serializers.EmailField()
-    username = serializers.CharField(max_length=USERNAME_LENGTH)
+    email = serializers.EmailField(max_length=EMAIL_LENGTH)
+    username = serializers.RegexField(
+        r'^[\w.@+-]+\Z', max_length=USERNAME_LENGTH
+    )
 
     def validate_username(self, value):
         if value == 'me':
