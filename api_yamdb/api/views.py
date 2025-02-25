@@ -30,8 +30,10 @@ from .serializers import (
     TokenSerializer,
     UserSerializer,
 )
-from .utils import (check_fields_availability, check_user_objects,
-                    send_confirmation_code)
+from .utils import (
+    check_fields_availability, check_user_objects, send_confirmation_code
+)
+
 User = get_user_model()
 
 
@@ -40,6 +42,7 @@ class SignupView(APIView):
     Регистрирует пользователя в БД.
     Отправляет код подтверждения на почту.
     """
+
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -49,18 +52,23 @@ class SignupView(APIView):
             username = serializer.validated_data['username']
             confirmation_code = get_random_string(length=40)
 
-            (both_exists, username_exists, email_exists
-             ) = check_user_objects(User, email, username)
-            print(both_exists, username_exists, email_exists)
+            (
+                both_exists, username_exists, email_exists
+            ) = check_user_objects(User, email, username)
+
             response, fields_occupied = check_fields_availability(
-                both_exists, username_exists, email_exists,
-                email, username
+                both_exists,
+                username_exists,
+                email_exists,
+                email,
+                username,
             )
             if fields_occupied:
                 return Response(response[0], response[1])
 
             user, created = User.objects.update_or_create(
-                email=email, username=username,
+                email=email,
+                username=username,
                 defaults={'confirmation_code': confirmation_code},
             )
             send_confirmation_code(user, confirmation_code, email, username)
@@ -73,6 +81,7 @@ class TokenView(APIView):
     Сверяет код подтверждения пользователя.
     Выдает/обновляет токен для пользователя.
     """
+
     permission_classes = [AllowAny]
 
     def post(self, request):

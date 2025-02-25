@@ -2,11 +2,14 @@ from django.conf import settings
 from django.core.mail import send_mail
 from django.http import Http404
 from django.shortcuts import get_object_or_404
+from typing import Union
+
 from rest_framework import status
 from rest_framework.response import Response
+from reviews.models import User
 
 
-def check_user_objects(user_model: object, email: str, username: str) -> tuple:
+def check_user_objects(user_model: User, email: str, username: str) -> tuple:
     """Проверяет пользователя в БД по предоставленным полям."""
 
     both_exists = True
@@ -34,20 +37,25 @@ def check_user_objects(user_model: object, email: str, username: str) -> tuple:
 
 
 def check_fields_availability(
-    both_exists: bool, username_exists: bool,
-    email_exists: bool, email: str, username: str
+    both_exists: bool,
+    username_exists: bool,
+    email_exists: bool,
+    email: str,
+    username: str,
 ) -> tuple:
     """
     Возвращает объект ответа.
     Проверяет наличие пользователя с данными полями.
     """
-    response = False
-    fields_occupied = False
+
+    response: Union[object, None] = None
+    fields_occupied: bool = False
+
     email_dict = {"email": ['User with this email already registered.']}
     user_dict = {"username": ['User with this username already registered.']}
+
     if both_exists:
         response = {"email": email, "username": username}, status.HTTP_200_OK
-
     else:
         if email_exists and username_exists:
             response = {**email_dict, **user_dict}, status.HTTP_400_BAD_REQUEST
@@ -67,8 +75,10 @@ def check_fields_availability(
 
 
 def send_confirmation_code(
-        user_instance: object, confirmation_code: str,
-        email: str, username: str
+    user_instance: User,
+    confirmation_code: str,
+    email: str,
+    username: str,
 ) -> object:
     """Отправляет код подтверждения по почте."""
 
@@ -76,6 +86,7 @@ def send_confirmation_code(
     message = f'Your confirmation code is: {confirmation_code}'
     from_email = settings.DEFAULT_FROM_EMAIL
     recipient_list = [email]
+
     try:
         send_mail(subject, message, from_email, recipient_list)
     except Exception:
