@@ -50,20 +50,20 @@ class SignupView(APIView):
 
             (both_exists, username_exists, email_exists
              ) = check_user_objects(User, email, username)
-
+            print(both_exists, username_exists, email_exists)
             response, fields_occupied = check_fields_availability(
                 both_exists, username_exists, email_exists,
                 email, username
             )
             if fields_occupied:
-                return response
+                return Response(response[0], response[1])
 
             user, created = User.objects.update_or_create(
                     email=email, username=username,
                     defaults={'confirmation_code': confirmation_code},
             )
             send_confirmation_code(user, confirmation_code, email, username)
-            return response
+            return Response(response[0], response[1])
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 

@@ -6,81 +6,72 @@ from rest_framework import status
 from rest_framework.response import Response
 
 
-def check_user_objects(user_model, email, username):
+def check_user_objects(user_model: object, email: str, username: str) -> tuple:
     """Проверяет пользователя в БД по предоставленным полям."""
 
-    user_both_exists = True
-    user_username_exists = True
-    user_email_exists = True
+    both_exists = True
+    username_exists = True
+    email_exists = True
+
     try:
         get_object_or_404(user_model, email=email)
     except Http404:
-        user_email_exists = False
+        email_exists = False
 
     try:
         get_object_or_404(user_model, username=username)
     except Http404:
-        user_username_exists = False
+        username_exists = False
 
     try:
         get_object_or_404(
             user_model, email=email, username=username
         )
     except Http404:
-        user_both_exists = False
+        both_exists = False
 
-    return user_both_exists, user_username_exists, user_email_exists
+    return both_exists, username_exists, email_exists
 
 
 def check_fields_availability(
-    user_both_exists, user_username_exists, user_email_exists, email, username
-) -> object:
-    """Возвращает объект ответа."""
-
+    both_exists: bool, username_exists: bool,
+    email_exists: bool, email: str, username: str
+) -> tuple:
+    """
+    Возвращает объект ответа.
+    Проверяет наличие пользователя с данными полями.
+    """
     response = False
     fields_occupied = False
+    email_dict = {"email": ['User with this email already registered.']}
+    user_dict = {"username": ['User with this username already registered.']}
+    if both_exists:
+        response = {"email": email, "username": username}, status.HTTP_200_OK
 
-    if user_both_exists:
-        response = Response({
-                "email": email,
-                "username": username},
-                status=status.HTTP_200_OK
-            )
-    if not user_both_exists:
-        if user_email_exists and user_username_exists:
-            response = Response({
-                "email":
-                ['User with this email already registered.'],
-                "username":
-                ['User with this username already registered.']},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        if user_email_exists:
-            response = Response({
-                "email":
-                ['User with this email already registered.']},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        if user_username_exists:
-            response = Response({
-                "username":
-                ['User with this username already registered.']},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        if user_username_exists or user_email_exists:
-            fields_occupied = True
+    else:
+        if email_exists and username_exists:
+            response = {**email_dict, **user_dict}, status.HTTP_400_BAD_REQUEST
+        else:
+            if email_exists:
+                response = email_dict, status.HTTP_400_BAD_REQUEST
+
+            if username_exists:
+                response = user_dict, status.HTTP_400_BAD_REQUEST
+
+    if username_exists or email_exists:
+        fields_occupied = True
+
     if not response:
-        response = Response({
-            "email": email,
-            "username": username},
-            status=status.HTTP_200_OK
-        )
-    print(response)
+        response = {"email": email, "username": username}, status.HTTP_200_OK
     return (response, fields_occupied)
 
 
-def send_confirmation_code(user_instance, confirmation_code, email, username):
+def send_confirmation_code(
+        user_instance: object, confirmation_code: str,
+        email: str, username: str
+) -> object:
     """Отправляет код подтверждения по почте."""
+
     subject = 'YaMDB Registration Confirmation'
     message = f'Your confirmation code is: {confirmation_code}'
     from_email = settings.DEFAULT_FROM_EMAIL
