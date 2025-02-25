@@ -5,7 +5,12 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 from .constants import (
-    CONFIRMATION_CODE_LENGTH, EMAIL_LENGTH, ROLE_LENGTH, TEXT_LENGTH
+    CONFIRMATION_CODE_LENGTH,
+    EMAIL_LENGTH,
+    MAX_SCORE_VALUE,
+    MIN_SCORE_VALUE,
+    ROLE_LENGTH,
+    TEXT_LENGTH,
 )
 from .mixins import CategoryGenreMixin
 
@@ -120,7 +125,10 @@ class Review(models.Model):
     )
     score = models.PositiveSmallIntegerField(
         verbose_name='Оценка',
-        validators=[MinValueValidator(1), MaxValueValidator(10)]
+        validators=[
+            MinValueValidator(MIN_SCORE_VALUE),
+            MaxValueValidator(MAX_SCORE_VALUE),
+        ]
     )
 
     class Meta:

@@ -4,7 +4,12 @@ from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 
 from reviews.constants import (
-    CONFIRMATION_CODE_LENGTH, EMAIL_LENGTH, OWNER_USERNAME_URL, USERNAME_LENGTH
+    CONFIRMATION_CODE_LENGTH,
+    EMAIL_LENGTH,
+    MAX_SCORE_VALUE,
+    MIN_SCORE_VALUE,
+    OWNER_USERNAME_URL,
+    USERNAME_LENGTH,
 )
 from reviews.models import Category, Comment, Genre, Review
 from .mixins import TitleSerializerMixin
@@ -103,10 +108,10 @@ class ReviewSerializer(serializers.ModelSerializer):
         read_only=True, slug_field='username'
     )
     score = serializers.IntegerField(
-        min_value=1, max_value=10,
+        min_value=MIN_SCORE_VALUE, max_value=MAX_SCORE_VALUE,
         error_messages={
-            "min_value": "Оценка не может быть ниже 1.",
-            "max_value": "Оценка не может быть выше 10."
+            "min_value": f"Оценка не может быть ниже {MIN_SCORE_VALUE}.",
+            "max_value": f"Оценка не может быть выше {MAX_SCORE_VALUE}."
         }
     )
 
