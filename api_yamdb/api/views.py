@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from django.utils.crypto import get_random_string
 
@@ -26,7 +27,8 @@ from .serializers import (
     CommentSerializer,
     GenreSerializer,
     ReviewSerializer,
-    TitleSerializer,
+    TitleCreateSerializer,
+    TitleListSerializer,
     SignUpSerializer,
     TokenSerializer,
     UserSerializer,
@@ -157,12 +159,18 @@ class CategoryViewSet(CategoryGenreViewsetMixin):
 class TitleViewSet(viewsets.ModelViewSet):
     """Viewset для произведений."""
 
-    queryset = Title.objects.all()
-    serializer_class = TitleSerializer
+    queryset = Title.objects.annotate(
+        rating=Avg('reviews__score')
+    ).order_by('id')
     permission_classes = [IsAdminOrReadOnly, IsMethodPutAllowed]
     filter_backends = [DjangoFilterBackend]
     filterset_class = TitleFilter
     pagination_class = PageNumberPagination
+
+    def get_serializer_class(self):
+        if self.action in ('list', 'retrieve'):
+            return TitleListSerializer
+        return TitleCreateSerializer
 
 
 class ReviewViewSet(viewsets.ModelViewSet):

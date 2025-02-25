@@ -6,8 +6,8 @@ from rest_framework import serializers
 from reviews.constants import (
     CONFIRMATION_CODE_LENGTH, EMAIL_LENGTH, OWNER_USERNAME_URL, USERNAME_LENGTH
 )
-from reviews.models import Category, Comment, Genre, Review, Title
-
+from reviews.models import Category, Comment, Genre, Review
+from .mixins import TitleSerializerMixin
 
 User = get_user_model()
 
@@ -72,46 +72,28 @@ class CategorySerializer(serializers.ModelSerializer):
         exclude = ('id',)
 
 
-class TitleSerializer(serializers.ModelSerializer):
-    """Сериализатор для произведений."""
+class TitleListSerializer(TitleSerializerMixin):
+    """Сериализатор для получения списка/одного произведения."""
+
+    genre = GenreSerializer(many=True)
+    category = CategorySerializer()
+    rating = serializers.IntegerField()
+
+
+class TitleCreateSerializer(TitleSerializerMixin):
+    """Сериализатор для создания/изменения/удаления произведения."""
 
     genre = serializers.SlugRelatedField(
         slug_field='slug',
         queryset=Genre.objects.all(),
         many=True,
+        allow_empty=False,
     )
     category = serializers.SlugRelatedField(
         slug_field='slug',
         queryset=Category.objects.all(),
+        allow_null=False,
     )
-    genre_detail = GenreSerializer(source='genre', read_only=True, many=True)
-    category_detail = CategorySerializer(source='category', read_only=True)
-    rating = serializers.SerializerMethodField(read_only=True)
-
-    class Meta:
-        model = Title
-        fields = ('id', 'name', 'year', 'description', 'category',
-                  'genre', 'category_detail', 'genre_detail', 'rating')
-
-    def get_rating(self, obj):
-        reviews = obj.reviews.all()
-
-        count = len(reviews)
-        if count == 0:
-            return None
-
-        total_score = 0
-        for review in reviews:
-            total_score += review.score
-        return total_score / count
-
-    def to_representation(self, instance):
-        representation = super().to_representation(instance)
-        representation['category'] = representation.pop(
-            'category_detail', None
-        )
-        representation['genre'] = representation.pop('genre_detail', None)
-        return representation
 
 
 class ReviewSerializer(serializers.ModelSerializer):
