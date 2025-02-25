@@ -113,9 +113,7 @@ class UsersViewSet(viewsets.ModelViewSet):
     search_fields = ['username']
     pagination_class = PageNumberPagination
     http_method_names = ['get', 'post', 'delete', 'patch']
-
-    def get_object(self):
-        return get_object_or_404(User, username=self.kwargs.get('pk'))
+    lookup_field = 'username'
 
     @action(
         detail=False,
@@ -149,18 +147,12 @@ class GenreViewSet(CategoryGenreViewsetMixin):
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
 
-    def get_object(self):
-        return get_object_or_404(Genre, slug=self.kwargs.get('pk'))
-
 
 class CategoryViewSet(CategoryGenreViewsetMixin):
     """ViewSet для категорий."""
 
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-
-    def get_object(self):
-        return get_object_or_404(Category, slug=self.kwargs.get('pk'))
 
 
 class TitleViewSet(viewsets.ModelViewSet):

@@ -13,6 +13,7 @@ class CategoryGenreViewsetMixin(
     mixins.DestroyModelMixin,
     viewsets.GenericViewSet,
 ):
+    lookup_field = 'slug'
     permission_classes = [IsAdminOrReadOnly]
     filter_backends = [filters.SearchFilter]
     search_fields = ['name']
