@@ -66,8 +66,8 @@ def check_fields_availability(
             if username_exists:
                 response = user_dict, status.HTTP_400_BAD_REQUEST
 
-    if username_exists or email_exists:
-        fields_occupied = True
+        if username_exists or email_exists:
+            fields_occupied = True
 
     if not response:
         response = {"email": email, "username": username}, status.HTTP_200_OK
