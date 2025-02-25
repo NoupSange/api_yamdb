@@ -1,5 +1,4 @@
 import datetime
-from enum import Enum
 
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import MaxValueValidator, MinValueValidator

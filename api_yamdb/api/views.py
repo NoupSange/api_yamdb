@@ -1,16 +1,17 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
-from django.db import models
 from django.shortcuts import get_object_or_404
 from django.utils.crypto import get_random_string
+
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
-from reviews.models import Comment, Category, Genre, Review, Title
+
+from reviews.models import Category, Genre, Review, Title
 
 from .filters import TitleFilter
 from .mixins import CategoryGenreViewsetMixin
@@ -164,16 +165,14 @@ class ReviewViewSet(viewsets.ModelViewSet):
     serializer_class = ReviewSerializer
     permission_classes = [AuthorModeratorAdminOrReadOnly, IsMethodPutAllowed]
 
-    def get_title(self) -> Title:
+    def get_title(self):
         """Получение произведения по ID."""
         return get_object_or_404(Title, id=self.kwargs.get('title_id'))
 
-    def get_queryset(self) -> models.QuerySet[Review]:
-        """Возвращает все отзывы произведения."""
+    def get_queryset(self):
         return self.get_title().reviews.all()
 
-    def perform_create(self, serializer) -> None:
-        """Переопределение метода добавления отзыва."""
+    def perform_create(self, serializer):
         title = self.get_title()
         serializer.save(author=self.request.user, title=title)
 
@@ -184,14 +183,11 @@ class CommentViewSet(viewsets.ModelViewSet):
     serializer_class = CommentSerializer
     permission_classes = [AuthorModeratorAdminOrReadOnly, IsMethodPutAllowed]
 
-    def get_review(self) -> Review:
-        """Получение отзыва по ID."""
+    def get_review(self):
         return get_object_or_404(Review, id=self.kwargs.get('review_id'))
 
-    def get_queryset(self) -> models.QuerySet[Comment]:
-        """Возвращает все комментарии для отзыва."""
+    def get_queryset(self):
         return self.get_review().comments.all().order_by('-pub_date')
 
-    def perform_create(self, serializer) -> None:
-        """Переопределение метода добавления комментария."""
+    def perform_create(self, serializer):
         serializer.save(author=self.request.user, review=self.get_review())
