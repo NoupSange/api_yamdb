@@ -9,7 +9,9 @@ class Command(BaseCommand):
     help = 'Импортирует данные из CSV файлов'
 
     def add_arguments(self, parser):
-        parser.add_argument('folder_path', type=str, help='Папка с CSV файлами')
+        parser.add_argument(
+            'folder_path', type=str, help='Папка с CSV файлами'
+        )
 
     def handle(self, *args, **kwargs):
         folder_path = kwargs['folder_path']
@@ -25,7 +27,9 @@ class Command(BaseCommand):
         self.import_reviews(os.path.join(folder_path, 'review.csv'))
         self.import_comments(os.path.join(folder_path, 'comments.csv'))
 
-        self.stdout.write(self.style.SUCCESS('✅ Все данные успешно импортированы!'))
+        self.stdout.write(self.style.SUCCESS(
+            '✅ Все данные успешно импортированы!')
+        )
 
     def import_categories(self, filepath):
         with open(filepath, encoding='utf-8') as file:
