@@ -5,16 +5,17 @@ from django.utils.crypto import get_random_string
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from reviews.constants import OWNER_USERNAME_URL
 from reviews.models import Category, Genre, Review, Title
 
 from .filters import TitleFilter
 from .mixins import CategoryGenreViewsetMixin
 from .permissions import (
-    AllowAny,
     AuthorModeratorAdminOrReadOnly,
     IsAdminOrOwner,
     IsAdminOrReadOnly,
@@ -115,7 +116,7 @@ class UsersViewSet(viewsets.ModelViewSet):
             User,
             username=(
                 self.request.user.username
-                if username == 'me'
+                if username == OWNER_USERNAME_URL
                 else username
             )
         )
@@ -123,7 +124,7 @@ class UsersViewSet(viewsets.ModelViewSet):
         return user
 
     def perform_update(self, serializer):
-        is_me = self.kwargs.get('pk') == 'me'
+        is_me = self.kwargs.get('pk') == OWNER_USERNAME_URL
         is_admin = self.request.user.is_authenticated and (
             self.request.user.role == 'admin' or self.request.user.is_superuser
         )

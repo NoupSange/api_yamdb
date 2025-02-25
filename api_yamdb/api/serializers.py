@@ -4,7 +4,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 
 from reviews.constants import (
-    CONFIRMATION_CODE_LENGTH, EMAIL_LENGTH, USERNAME_LENGTH
+    CONFIRMATION_CODE_LENGTH, EMAIL_LENGTH, OWNER_USERNAME_URL, USERNAME_LENGTH
 )
 from reviews.models import Category, Comment, Genre, Review, Title
 
@@ -19,8 +19,10 @@ class SignUpSerializer(serializers.Serializer):
     )
 
     def validate_username(self, value):
-        if value == 'me':
-            raise ValidationError('Username "me" is not allowed.')
+        if value == OWNER_USERNAME_URL:
+            raise ValidationError(
+                f'Username "{OWNER_USERNAME_URL}" is not allowed.'
+            )
         return value
 
 
@@ -59,7 +61,7 @@ class GenreSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Genre
-        fields = ('name', 'slug',)
+        exclude = ('id',)
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -67,7 +69,7 @@ class CategorySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Category
-        fields = ('name', 'slug',)
+        exclude = ('id',)
 
 
 class TitleSerializer(serializers.ModelSerializer):
