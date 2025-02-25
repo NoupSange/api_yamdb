@@ -38,7 +38,8 @@ class TokenSerializer(serializers.Serializer):
 
         if user.confirmation_code != confirmation_code:
             raise ValidationError({
-                'confirmation_code': 'Invalid confirmation code.'})
+                'confirmation_code': 'Invalid confirmation code.'
+            })
 
         return data
 
