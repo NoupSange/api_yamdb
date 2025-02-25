@@ -1,10 +1,6 @@
 from rest_framework import permissions
 from rest_framework.exceptions import MethodNotAllowed
-
-
-class AllowAny(permissions.BasePermission):
-    """Разрешает доступ всем пользователям."""
-    pass
+from reviews.constants import OWNER_USERNAME_URL
 
 
 class IsAdminOrReadOnly(permissions.BasePermission):
@@ -70,7 +66,7 @@ class IsAdminOrOwner(permissions.BasePermission):
             return True
 
         if view.action == 'destroy':
-            if view.kwargs.get('pk') == 'me':
+            if view.kwargs.get('pk') == OWNER_USERNAME_URL:
                 raise MethodNotAllowed('DELETE')
             return False
 
@@ -84,6 +80,6 @@ class IsAdminOrOwner(permissions.BasePermission):
             request.user.is_authenticated and (
                 request.user.role == 'admin'
                 or request.user.is_superuser
-                or view.kwargs.get('pk') == 'me'
+                or view.kwargs.get('pk') == OWNER_USERNAME_URL
             )
         )

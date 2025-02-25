@@ -8,10 +8,11 @@ class TitleFilter(filters.FilterSet):
         to_field_name='slug',
         queryset=Genre.objects.all(),
     )
-    category = filters.ModelChoiceFilter(
-        field_name='category',
-        to_field_name='slug',
-        queryset=Category.objects.all(),
+    category = filters.CharFilter(
+        field_name='category__slug',
+    )
+    name = filters.CharFilter(
+        lookup_expr='icontains'
     )
 
     class Meta:
