@@ -95,6 +95,6 @@ python manage.py import_csv
 ### Об авторах
 Авторы проекта:
 * [Яндекс.Практикум](https://practicum.yandex.ru/)
-* Федосеев М.В. <a href="https://github.com/NoupSange">github</a>
-* Шамыкаева Е.А. <a href="https://github.com/s-elen4">github</a>
-* Абакумова Н.С. <a href="https://github.com/nsabakum">github</a>
+* Федосеев М.В. [github](https://github.com/NoupSange)
+* Шамыкаева Е.А. [github](https://github.com/s-elen4)
+* Абакумова Н.С. [github](https://github.com/nsabakum)
