@@ -1,6 +1,5 @@
 from rest_framework import permissions
 from rest_framework.exceptions import MethodNotAllowed
-from reviews.constants import OWNER_USERNAME_URL
 
 
 class IsAdminOrReadOnly(permissions.BasePermission):
@@ -51,35 +50,11 @@ class AuthorModeratorAdminOrReadOnly(permissions.BasePermission):
         )
 
 
-class IsAdminOrOwner(permissions.BasePermission):
-    """
-    Разрешает чтение и изменение собственной записи любому
-    авторизованному пользователю.
-    Разрешает чтение и изменение чужих записей только Администратору.
-    """
+class IsAdmin(permissions.BasePermission):
+    """Разрешает действия только Администратору."""
 
     def has_permission(self, request, view):
-        if not request.user.is_authenticated:
-            return False
-
-        if request.user.role == 'admin' or request.user.is_superuser:
-            return True
-
-        if view.action == 'destroy':
-            if view.kwargs.get('pk') == OWNER_USERNAME_URL:
-                raise MethodNotAllowed('DELETE')
-            return False
-
-        if view.action not in ('retrieve', 'partial_update'):
-            return False
-
-        return True
-
-    def has_object_permission(self, request, view, obj):
         return (
-            request.user.is_authenticated and (
-                request.user.role == 'admin'
-                or request.user.is_superuser
-                or view.kwargs.get('pk') == OWNER_USERNAME_URL
-            )
+            request.user.is_authenticated
+            and (request.user.role == 'admin' or request.user.is_superuser)
         )
