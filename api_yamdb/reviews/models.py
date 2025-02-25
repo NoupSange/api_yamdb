@@ -1,27 +1,61 @@
 import datetime
-from django.conf import settings
-
-
-from django.contrib.auth import get_user_model
-from django.core.validators import MinValueValidator, MaxValueValidator
-from django.db import models
-
-from .constants import TEXT_LENGTH
-from .mixins import CategoryGenreMixin
+from enum import Enum
 
 from django.contrib.auth.models import AbstractUser
+from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db import models
+
+from .constants import (
+    CONFIRMATION_CODE_LENGTH, EMAIL_LENGTH, ROLE_LENGTH, TEXT_LENGTH
+)
+from .mixins import CategoryGenreMixin
 
 
 class User(AbstractUser):
-    email = models.EmailField(unique=True)
-    role = models.CharField(max_length=50)
-    bio = models.TextField(blank=True, null=True)
+    USER = "user"
+    MODERATOR = "moderator"
+    ADMIN = "admin"
+
+    ROLE_CHOICES = (
+        (USER, "Пользователь"),
+        (MODERATOR, "Модератор"),
+        (ADMIN, "Админ")
+    )
+
+    email = models.EmailField(
+        unique=True,
+        blank=False,
+        null=False,
+        verbose_name='Почта',
+        max_length=EMAIL_LENGTH,
+    )
+    bio = models.TextField(null=True, blank=True, verbose_name='Биография')
+    role = models.CharField(
+        max_length=ROLE_LENGTH,
+        choices=ROLE_CHOICES,
+        default=USER,
+        verbose_name='Роль',
+    )
+    confirmation_code = models.CharField(
+        max_length=CONFIRMATION_CODE_LENGTH, null=True,
+        verbose_name='Код подтверждения',
+    )
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['username']
+
+    class Meta:
+        ordering = ('id',)
+
+    def __str__(self):
+        return self.username
+
 
 class Category(CategoryGenreMixin):
 
     class Meta:
         verbose_name = 'категория'
         verbose_name_plural = 'Категории'
+        ordering = ('id',)
 
 
 class Genre(CategoryGenreMixin):
@@ -29,6 +63,7 @@ class Genre(CategoryGenreMixin):
     class Meta:
         verbose_name = 'жанр'
         verbose_name_plural = 'Жанры'
+        ordering = ('id',)
 
 
 class Title(models.Model):
@@ -61,6 +96,7 @@ class Title(models.Model):
         default_related_name = 'titles'
         verbose_name = 'произведение'
         verbose_name_plural = 'Произведения'
+        ordering = ('id',)
 
     def __str__(self):
         return f'{self.name}, {self.year}'
@@ -68,7 +104,7 @@ class Title(models.Model):
 
 class Review(models.Model):
     author = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        User,
         on_delete=models.CASCADE,
         verbose_name='Автор',
     )
@@ -93,6 +129,11 @@ class Review(models.Model):
         verbose_name = 'Отзыв'
         verbose_name_plural = 'Отзывы'
         ordering = ('pub_date',)
+        constraints = [
+            models.UniqueConstraint(
+                fields=('title', 'author'), name='unique_review'
+            )
+        ]
 
     def __str__(self):
         return f'Отзыв от {self.author.username} на {self.title.name}'
@@ -100,7 +141,7 @@ class Review(models.Model):
 
 class Comment(models.Model):
     author = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        User,
         on_delete=models.CASCADE,
         verbose_name='Автор',
     )
