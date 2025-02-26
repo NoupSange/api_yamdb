@@ -1,7 +1,4 @@
-import datetime
-
 from django.contrib.auth.models import AbstractUser
-from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
@@ -10,51 +7,52 @@ from .constants import (
     EMAIL_LENGTH,
     MAX_SCORE_VALUE,
     MIN_SCORE_VALUE,
-    ROLE_LENGTH,
     SLUG_LENGTH,
     TEXT_LENGTH,
 )
-
-
-def validate_year(value):
-    current_year = datetime.date.today().year
-    if value > current_year:
-        raise ValidationError(
-            f"Год не может превышать текущий {current_year} год."
-        )
+from .validators import validate_year
 
 
 class User(AbstractUser):
-    USER = "user"
-    MODERATOR = "moderator"
-    ADMIN = "admin"
 
-    ROLE_CHOICES = (
-        (USER, "Пользователь"),
-        (MODERATOR, "Модератор"),
-        (ADMIN, "Админ")
-    )
+    class Role(models.TextChoices):
+        USER = 'user', 'Пользователь'
+        MODERATOR = 'moderator', 'Модератор'
+        ADMIN = 'admin', 'Администратор'
+
+    ROLE_MAX_LENGTH = max(len(role) for role in Role.values)
 
     email = models.EmailField(
         unique=True,
-        blank=False,
-        null=False,
-        verbose_name='Почта',
         max_length=EMAIL_LENGTH,
+        verbose_name='Email',
     )
-    bio = models.TextField(null=True, blank=True, verbose_name='Биография')
+    bio = models.TextField(blank=True, null=True, verbose_name='Биография')
     role = models.CharField(
-        max_length=ROLE_LENGTH,
-        choices=ROLE_CHOICES,
-        default=USER,
+        max_length=ROLE_MAX_LENGTH,
+        choices=Role.choices,
+        default=Role.USER,
+        blank=True,
         verbose_name='Роль',
     )
     confirmation_code = models.CharField(
-        max_length=CONFIRMATION_CODE_LENGTH, null=True,
+        blank=True,
+        null=True,
+        max_length=CONFIRMATION_CODE_LENGTH,
         verbose_name='Код подтверждения',
     )
-    USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['username']
+
+    @property
+    def is_moderator(self):
+        return self.role == self.Role.MODERATOR
+
+    @property
+    def is_admin(self):
+        return (
+            self.role == self.Role.ADMIN
+            or self.is_staff
+            or self.is_superuser
+        )
 
     class Meta:
         verbose_name = 'пользователь'

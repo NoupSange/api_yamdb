@@ -1,7 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.db.models import Avg
 from django.shortcuts import get_object_or_404
-from django.utils.crypto import get_random_string
 
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
@@ -33,72 +32,38 @@ from .serializers import (
     TokenSerializer,
     UserSerializer,
 )
-from .utils import (
-    check_fields_availability, check_user_objects, send_confirmation_code
-)
 
 User = get_user_model()
 
 
-class SignupView(APIView):
-    """
-    Регистрирует пользователя в БД.
-    Отправляет код подтверждения на почту.
-    """
+class AuthViewSet(viewsets.ViewSet):
+    """ViewSet для регистрации пользователей."""
 
     permission_classes = [AllowAny]
 
-    def post(self, request):
+    @action(detail=False, methods=['post'])
+    def signup(self, request):
         serializer = SignUpSerializer(data=request.data)
+
         if serializer.is_valid():
-            email = serializer.validated_data['email']
-            username = serializer.validated_data['username']
-            confirmation_code = get_random_string(length=40)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
-            (
-                both_exists, username_exists, email_exists
-            ) = check_user_objects(User, email, username)
-
-            response, fields_occupied = check_fields_availability(
-                both_exists,
-                username_exists,
-                email_exists,
-                email,
-                username,
-            )
-            if fields_occupied:
-                return Response(response[0], response[1])
-
-            user, created = User.objects.update_or_create(
-                email=email,
-                username=username,
-                defaults={'confirmation_code': confirmation_code},
-            )
-            send_confirmation_code(user, confirmation_code, email, username)
-            return Response(response[0], response[1])
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
-class TokenView(APIView):
-    """
-    Сверяет код подтверждения пользователя.
-    Выдает/обновляет токен для пользователя.
-    """
-
-    permission_classes = [AllowAny]
-
-    def post(self, request):
+    @action(detail=False, methods=['post'])
+    def token(self, request):
         serializer = TokenSerializer(data=request.data)
+
         if serializer.is_valid():
-            username = serializer.validated_data['username']
-            user = User.objects.get(username=username)
-
-            user.is_active = True
-            user.save()
-
+            username = serializer.validated_data.get('username')
+            user = get_object_or_404(User, username=username)
             refresh = RefreshToken.for_user(user)
-            token = str(refresh.access_token)
-            return Response({'token': token}, status=status.HTTP_200_OK)
+            return Response({
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+            }, status=status.HTTP_200_OK)
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 

@@ -1,6 +1,10 @@
+import secrets
+from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.mail import send_mail
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
+
 from rest_framework import serializers
 
 from reviews.constants import (
@@ -12,29 +16,76 @@ from reviews.constants import (
     USERNAME_LENGTH,
 )
 from reviews.models import Category, Comment, Genre, Review
+from reviews.validators import username_validator
 from .mixins import TitleSerializerMixin
 
 User = get_user_model()
 
 
 class SignUpSerializer(serializers.Serializer):
-    email = serializers.EmailField(max_length=EMAIL_LENGTH)
-    username = serializers.RegexField(
-        r'^[\w.@+-]+\Z', max_length=USERNAME_LENGTH
+    email = serializers.EmailField(required=True, max_length=EMAIL_LENGTH)
+    username = serializers.CharField(
+        required=True,
+        max_length=USERNAME_LENGTH,
+        validators=[username_validator]
     )
 
     def validate_username(self, value):
-        if value == OWNER_USERNAME_URL:
+        if value.lower() == OWNER_USERNAME_URL:
             raise ValidationError(
-                f'Username "{OWNER_USERNAME_URL}" is not allowed.'
+                f'Имя пользователя "{value}" недопустимо.'
             )
         return value
 
+    def validate(self, data):
+        email = data.get('email')
+        username = data.get('username')
+
+        if User.objects.filter(email=email).exists():
+            user = User.objects.get(email=email)
+            if user.username != username:
+                raise serializers.ValidationError({
+                    "email": "Такой email уже существует.",
+                    "username": (
+                        "Имя пользователя не совпадает с зарегистрированным."
+                    )
+                })
+        if User.objects.filter(username=username).exists():
+            user = User.objects.get(username=username)
+            if user.email != email:
+                raise serializers.ValidationError({
+                    "email": "Email не совпадает с зарегистрированным.",
+                    "username": "Такое имя пользователя уже существует."
+                })
+
+        return data
+
+    def create(self, validated_data):
+        email = validated_data.get('email')
+        username = validated_data.get('username')
+        confirmation_code = secrets.token_hex(16)
+
+        user, created = User.objects.get_or_create(
+            email=email,
+            defaults={
+                'username': username,
+                'confirmation_code': confirmation_code,
+            }
+        )
+        send_mail(
+            "Код подтверждения",
+            f"Ваш код подтверждения: {confirmation_code}",
+            settings.DEFAULT_FROM_EMAIL,
+            [email],
+            fail_silently=False,
+        )
+        return user
+
 
 class TokenSerializer(serializers.Serializer):
-    username = serializers.CharField(max_length=USERNAME_LENGTH)
+    username = serializers.CharField(required=True, max_length=USERNAME_LENGTH)
     confirmation_code = serializers.CharField(
-        max_length=CONFIRMATION_CODE_LENGTH
+        required=True, max_length=CONFIRMATION_CODE_LENGTH
     )
 
     def validate(self, data):
@@ -44,10 +95,9 @@ class TokenSerializer(serializers.Serializer):
         user = get_object_or_404(User, username=username)
 
         if user.confirmation_code != confirmation_code:
-            raise ValidationError({
-                'confirmation_code': 'Invalid confirmation code.'
+            raise serializers.ValidationError({
+                "confirmation_code": "Неверный код подтверждения."
             })
-
         return data
 
 
