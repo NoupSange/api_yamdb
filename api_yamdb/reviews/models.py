@@ -10,9 +10,9 @@ from .constants import (
     MAX_SCORE_VALUE,
     MIN_SCORE_VALUE,
     ROLE_LENGTH,
+    SLUG_LENGTH,
     TEXT_LENGTH,
 )
-from .mixins import CategoryGenreMixin
 
 
 class User(AbstractUser):
@@ -48,13 +48,32 @@ class User(AbstractUser):
     REQUIRED_FIELDS = ['username']
 
     class Meta:
+        verbose_name = 'пользователь'
+        verbose_name_plural = 'Пользователи'
         ordering = ('id',)
 
     def __str__(self):
         return self.username
 
 
-class Category(CategoryGenreMixin):
+class CategoryGenreBase(models.Model):
+    name = models.CharField(
+        unique=True,
+        max_length=TEXT_LENGTH,
+        verbose_name='Наименование',
+    )
+    slug = models.SlugField(
+        unique=True, max_length=SLUG_LENGTH, verbose_name='Слаг'
+    )
+
+    class Meta:
+        abstract = True
+
+    def __str__(self):
+        return self.name
+
+
+class Category(CategoryGenreBase):
 
     class Meta:
         verbose_name = 'категория'
@@ -62,7 +81,7 @@ class Category(CategoryGenreMixin):
         ordering = ('id',)
 
 
-class Genre(CategoryGenreMixin):
+class Genre(CategoryGenreBase):
 
     class Meta:
         verbose_name = 'жанр'
