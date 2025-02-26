@@ -1,8 +1,10 @@
-import os
 import csv
+import os
+
 from django.core.management.base import BaseCommand
 from django.utils.dateparse import parse_datetime
-from reviews.models import Category, Genre, Title, Review, Comment, User
+
+from reviews.models import Category, Comment, Genre, Review, Title, User
 
 
 class Command(BaseCommand):

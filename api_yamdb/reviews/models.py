@@ -75,7 +75,7 @@ class Title(models.Model):
         max_length=TEXT_LENGTH,
         verbose_name='Название'
     )
-    year = models.PositiveIntegerField(
+    year = models.IntegerField(
         validators=[MaxValueValidator(datetime.date.today().year)],
         verbose_name='Год выпуска'
     )
@@ -171,7 +171,7 @@ class Comment(models.Model):
         default_related_name = 'comments'
         verbose_name = 'Комментарий'
         verbose_name_plural = 'Комментарии'
-        ordering = ('pub_date',)
+        ordering = ('-pub_date',)
 
     def __str__(self):
         return (

@@ -17,15 +17,6 @@ class IsAdminOrReadOnly(permissions.BasePermission):
         )
 
 
-class IsMethodPutAllowed(permissions.BasePermission):
-    """Запрещает метод PUT."""
-
-    def has_permission(self, request, view):
-        if request.method == 'PUT':
-            raise MethodNotAllowed('PUT')
-        return True
-
-
 class AuthorModeratorAdminOrReadOnly(permissions.BasePermission):
     """
     Разрешает:

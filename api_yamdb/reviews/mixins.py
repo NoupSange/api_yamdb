@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.db import models
+
 from .constants import SLUG_LENGTH, TEXT_LENGTH
 
 
