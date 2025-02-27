@@ -1,34 +1,17 @@
 from rest_framework import permissions
-from rest_framework.exceptions import MethodNotAllowed
-
-
-class AllowAny(permissions.BasePermission):
-    """Разрешает доступ всем пользователям."""
-    pass
 
 
 class IsAdminOrReadOnly(permissions.BasePermission):
     """
-    Разрешает редактирование и удаление контента администратору и суперюзеру.
+    Разрешает редактирование и удаление контента администратору.
     Чтение доступно всем.
     """
 
     def has_permission(self, request, view):
         return (
             request.method in permissions.SAFE_METHODS
-            or request.user.is_authenticated and (
-                request.user.role == 'admin' or request.user.is_superuser
-            )
+            or request.user.is_authenticated and request.user.is_admin
         )
-
-
-class IsMethodPutAllowed(permissions.BasePermission):
-    """Запрещает метод PUT."""
-
-    def has_permission(self, request, view):
-        if request.method == 'PUT':
-            raise MethodNotAllowed('PUT')
-        return True
 
 
 class AuthorModeratorAdminOrReadOnly(permissions.BasePermission):
@@ -50,40 +33,14 @@ class AuthorModeratorAdminOrReadOnly(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         return (
             request.method in permissions.SAFE_METHODS
-            or request.user.role in ('admin', 'moderator')
+            or request.user.is_moderator
+            or request.user.is_admin
             or obj.author == request.user
         )
 
 
-class IsAdminOrOwner(permissions.BasePermission):
-    """
-    Разрешает чтение и изменение собственной записи любому
-    авторизованному пользователю.
-    Разрешает чтение и изменение чужих записей только Администратору.
-    """
+class IsAdmin(permissions.BasePermission):
+    """Разрешает действия только Администратору."""
 
     def has_permission(self, request, view):
-        if not request.user.is_authenticated:
-            return False
-
-        if request.user.role == 'admin' or request.user.is_superuser:
-            return True
-
-        if view.action == 'destroy':
-            if view.kwargs.get('pk') == 'me':
-                raise MethodNotAllowed('DELETE')
-            return False
-
-        if view.action not in ('retrieve', 'partial_update'):
-            return False
-
-        return True
-
-    def has_object_permission(self, request, view, obj):
-        return (
-            request.user.is_authenticated and (
-                request.user.role == 'admin'
-                or request.user.is_superuser
-                or view.kwargs.get('pk') == 'me'
-            )
-        )
+        return request.user.is_authenticated and request.user.is_admin

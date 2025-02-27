@@ -1,5 +1,5 @@
 from django_filters import rest_framework as filters
-from reviews.models import Category, Genre, Title
+from reviews.models import Genre, Title
 
 
 class TitleFilter(filters.FilterSet):
@@ -8,10 +8,11 @@ class TitleFilter(filters.FilterSet):
         to_field_name='slug',
         queryset=Genre.objects.all(),
     )
-    category = filters.ModelChoiceFilter(
-        field_name='category',
-        to_field_name='slug',
-        queryset=Category.objects.all(),
+    category = filters.CharFilter(
+        field_name='category__slug',
+    )
+    name = filters.CharFilter(
+        lookup_expr='icontains'
     )
 
     class Meta:
